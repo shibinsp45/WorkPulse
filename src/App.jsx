@@ -341,10 +341,13 @@ function HomeScreen({ activeSession, breakMs, completedMs, distanceMeters, liveL
       ) : (
         <section className="empty-clock-card">
           <div className="clock-illustration">
-          <Timer size={46} />
-        </div>
+            <Timer size={46} />
+          </div>
           <h3>{onBreak ? 'Break in progress' : lastClosed ? 'You are checked out' : 'Ready to start'}</h3>
           <p>{onBreak ? 'Punch in when you are back. We will count the gap as break time.' : lastClosed ? 'Punch in again to continue your hours.' : 'Tap punch in to start tracking your work hours.'}</p>
+          <button className="ready-punch-button" onClick={punchIn} type="button">
+            Punch In
+          </button>
         </section>
       )}
 

@@ -609,6 +609,17 @@ button {
   line-height: 1.5;
 }
 
+.ready-punch-button {
+  width: min(240px, 100%);
+  min-height: 48px;
+  margin-top: 4px;
+  border-radius: 14px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--primary-2), var(--primary));
+  font-weight: 950;
+  box-shadow: 0 14px 30px rgba(85, 72, 244, 0.24);
+}
+
 .workplace-card {
   display: flex;
   align-items: center;
