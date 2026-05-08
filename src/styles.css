@@ -429,6 +429,29 @@ button {
   box-shadow: 0 8px 18px rgba(17, 24, 39, 0.06);
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.top-punch-target {
+  min-width: 108px;
+  height: 42px;
+  border-radius: 14px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--primary-2), var(--primary));
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 950;
+  box-shadow: 0 12px 26px rgba(85, 72, 244, 0.22);
+}
+
+.top-punch-target.danger {
+  background: linear-gradient(135deg, #ff5a54, var(--red));
+  box-shadow: 0 12px 26px rgba(240, 68, 56, 0.2);
+}
+
 .header-icon,
 .header-action {
   display: inline-grid;
@@ -614,6 +637,38 @@ button {
   border-radius: 16px;
   color: var(--primary);
   background: var(--soft-blue);
+}
+
+.location-status-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border: 1px solid rgba(85, 72, 244, 0.12);
+  border-radius: 14px;
+  background: #fff;
+  padding: 14px 16px;
+  box-shadow: 0 10px 24px rgba(17, 24, 39, 0.06);
+}
+
+.location-status-card div {
+  display: grid;
+  gap: 4px;
+}
+
+.location-status-card strong {
+  font-size: 15px;
+}
+
+.location-status-card p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.location-status-card svg {
+  flex: 0 0 auto;
+  color: var(--primary);
 }
 
 .target-card {
@@ -1513,6 +1568,7 @@ button {
 
   .app-shell .home-stack .state-pill,
   .app-shell .home-stack .quick-grid,
+  .app-shell .home-stack .location-status-card,
   .app-shell .home-stack .punch-actions,
   .app-shell .home-stack .summary-card {
     grid-column: 1 / -1;
@@ -1569,6 +1625,21 @@ button {
     min-height: 100vh;
     border: 0;
     border-radius: 0;
+  }
+
+  .app-header {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .header-actions {
+    display: grid;
+    grid-template-columns: 1fr 42px;
+    width: 100%;
+  }
+
+  .top-punch-target {
+    width: 100%;
+    min-width: 0;
   }
 }
 
