@@ -145,6 +145,124 @@ button {
   font-weight: 900;
 }
 
+.loading-screen {
+  display: grid;
+  flex: 1;
+  place-items: center;
+  color: var(--primary);
+  font-weight: 900;
+}
+
+.auth-screen {
+  display: grid;
+  flex: 1;
+  align-content: start;
+  gap: 18px;
+  padding: 32px 22px;
+}
+
+.auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  margin-top: 8px;
+}
+
+.mini-logo {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 16px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--primary-2), var(--primary));
+}
+
+.auth-brand h1 {
+  font-size: 25px;
+}
+
+.auth-brand p {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.auth-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  border-radius: 14px;
+  background: #fff;
+  padding: 6px;
+  box-shadow: 0 10px 24px rgba(17, 24, 39, 0.06);
+}
+
+.auth-toggle button {
+  height: 40px;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.auth-toggle button.active {
+  color: #fff;
+  background: var(--primary);
+}
+
+.auth-form {
+  display: grid;
+  gap: 12px;
+}
+
+.auth-form label {
+  display: flex;
+  height: 50px;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  padding: 0 14px;
+  color: #98a2b3;
+}
+
+.auth-form input,
+.location-field input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  color: var(--ink);
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+}
+
+.auth-submit {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.form-error,
+.action-error,
+.location-status {
+  border-radius: 10px;
+  background: #fff0ef;
+  padding: 10px 12px;
+  color: var(--red);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.action-error {
+  margin-bottom: 12px;
+}
+
 .app-header {
   display: grid;
   min-height: 88px;
@@ -180,6 +298,21 @@ button {
   color: var(--muted);
   font-size: 12px;
   font-weight: 700;
+}
+
+.location-chip {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 5px;
+  margin-top: 8px;
+  border-radius: 999px;
+  background: #fff;
+  padding: 7px 10px;
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 900;
+  box-shadow: 0 8px 18px rgba(17, 24, 39, 0.06);
 }
 
 .header-icon,
@@ -248,6 +381,11 @@ button {
 .checked-in {
   color: #108a57;
   background: #e9fbf2;
+}
+
+.on-break {
+  color: #a16207;
+  background: #fff7df;
 }
 
 .glass-card,
@@ -453,9 +591,9 @@ button {
   font-size: 11px;
 }
 
-.action-row {
+.punch-actions {
   display: grid;
-  grid-template-columns: 1fr 76px;
+  grid-template-columns: 1fr 1fr;
   gap: 10px;
 }
 
@@ -484,6 +622,13 @@ button {
 .secondary-action {
   color: var(--primary);
   background: #f1f0ff;
+}
+
+.primary-action:disabled,
+.secondary-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+  box-shadow: none;
 }
 
 .summary-card,
@@ -947,6 +1092,79 @@ button {
   gap: 16px;
 }
 
+.location-screen {
+  display: grid;
+  gap: 14px;
+}
+
+.location-card,
+.coordinate-card,
+.location-field {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+  padding: 16px;
+  box-shadow: var(--shadow);
+}
+
+.location-card {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  text-align: center;
+}
+
+.location-map {
+  display: grid;
+  width: 96px;
+  height: 96px;
+  place-items: center;
+  border: 2px dashed rgba(85, 72, 244, 0.28);
+  border-radius: 50%;
+  color: var(--primary);
+  background: #f1f0ff;
+}
+
+.location-card h2 {
+  font-size: 20px;
+}
+
+.location-card p {
+  max-width: 270px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.location-field {
+  display: grid;
+  gap: 10px;
+}
+
+.location-field span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.location-field input {
+  height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0 12px;
+}
+
+.coordinate-card {
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+.location-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
 .note-field {
   display: grid;
   gap: 10px;
@@ -1021,6 +1239,58 @@ button {
 
 .save-note {
   width: 100%;
+}
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: end center;
+  background: rgba(15, 23, 42, 0.38);
+  padding: 18px;
+}
+
+.confirm-card {
+  display: grid;
+  width: 100%;
+  gap: 12px;
+  border-radius: 20px;
+  background: #fff;
+  padding: 20px;
+  text-align: center;
+  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.24);
+}
+
+.confirm-icon {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  justify-self: center;
+  border-radius: 16px;
+  color: var(--primary);
+  background: #f1f0ff;
+}
+
+.confirm-card h2 {
+  font-size: 20px;
+}
+
+.confirm-card p {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.confirm-card p strong {
+  color: var(--ink);
+}
+
+.confirm-actions {
+  display: grid;
+  grid-template-columns: 1fr 90px;
+  gap: 10px;
 }
 
 .bottom-nav {
