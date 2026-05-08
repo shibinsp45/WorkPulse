@@ -26,6 +26,11 @@ import {
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
 const TOKEN_KEY = 'workpulse-auth-token';
+const GUEST_KEY = 'workpulse-guest-session';
+const GUEST_RECORDS_KEY = 'workpulse-guest-records';
+const GUEST_USER_KEY = 'workpulse-guest-user';
+const SPLASH_KEY = 'workpulse-splash-v2-seen';
+const ONBOARDING_KEY = 'workpulse-onboarding-done';
 const TARGET_MS = 8 * 60 * 60 * 1000;
 const WORKPLACE = 'Technopark Phase 1';
 
@@ -47,6 +52,34 @@ async function apiRequest(path, { body, method = 'GET', token } = {}) {
   }
 
   return data;
+}
+
+function readJsonStorage(key, fallback) {
+  try {
+    return JSON.parse(localStorage.getItem(key)) ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function defaultGuestUser() {
+  return {
+    id: 'guest',
+    name: 'Guest User',
+    email: '',
+    employeeId: 'GUEST',
+    workplace: WORKPLACE,
+    location: null,
+    isGuest: true,
+  };
+}
+
+function readGuestUser() {
+  return { ...defaultGuestUser(), ...readJsonStorage(GUEST_USER_KEY, {}) };
+}
+
+function readGuestRecords() {
+  return readJsonStorage(GUEST_RECORDS_KEY, {});
 }
 
 function pad(value) {
@@ -183,6 +216,17 @@ function StatusBar({ now }) {
         <span className="signal-dot" />
         <span className="signal-dot" />
         <span className="battery" />
+      </div>
+    </div>
+  );
+}
+
+function WorkPulseLogo({ compact = false }) {
+  return (
+    <div className={compact ? 'workpulse-logo compact' : 'workpulse-logo'}>
+      <div className="logo-ring">
+        <Clock3 size={compact ? 22 : 36} />
+        <CheckCircle2 className="logo-check" size={compact ? 15 : 22} />
       </div>
     </div>
   );
@@ -690,7 +734,7 @@ function NotesScreen({ record, saveNotes }) {
   );
 }
 
-function AuthScreen({ error, loading, mode, onSubmit, setMode }) {
+function AuthScreen({ error, loading, mode, onGuest, onSubmit, setMode }) {
   const [form, setForm] = useState({
     name: '',
     employeeId: '',
@@ -777,6 +821,13 @@ function AuthScreen({ error, loading, mode, onSubmit, setMode }) {
           {loading ? 'Please wait...' : isSignup ? 'Sign Up' : 'Login'}
         </button>
       </form>
+
+      <div className="guest-entry">
+        <span>or continue without an account</span>
+        <button onClick={onGuest} type="button">
+          Continue as Guest
+        </button>
+      </div>
     </main>
   );
 }
@@ -784,12 +835,72 @@ function AuthScreen({ error, loading, mode, onSubmit, setMode }) {
 function SplashScreen({ onStart }) {
   return (
     <main className="splash-screen">
-      <div className="splash-logo">
-        <CheckCircle2 size={42} />
-      </div>
+      <WorkPulseLogo />
       <h1>WorkPulse</h1>
       <p>Track your time. Stay productive.</p>
       <button onClick={onStart} type="button">Get Started</button>
+    </main>
+  );
+}
+
+function OnboardingScreen({ onDone }) {
+  const slides = [
+    {
+      icon: Timer,
+      title: 'Track work hours',
+      body: 'Punch in and out with a clean daily timer built for personal work tracking.',
+    },
+    {
+      icon: Coffee,
+      title: 'Smart break checks',
+      body: 'When you return after a gap, WorkPulse asks whether that time was a break.',
+    },
+    {
+      icon: MapPin,
+      title: 'Save your workplace',
+      body: 'Add a location manually or fetch it from your device when you allow access.',
+    },
+  ];
+  const [step, setStep] = useState(0);
+  const slide = slides[step];
+  const Icon = slide.icon;
+  const isLast = step === slides.length - 1;
+
+  function next() {
+    if (isLast) {
+      onDone();
+      return;
+    }
+
+    setStep((current) => current + 1);
+  }
+
+  return (
+    <main className="onboarding-screen">
+      <div className="onboarding-top">
+        <WorkPulseLogo compact />
+        <button onClick={onDone} type="button">Skip</button>
+      </div>
+
+      <section className="onboarding-visual">
+        <div className="onboarding-orbit">
+          <Icon size={48} />
+        </div>
+      </section>
+
+      <section className="onboarding-copy">
+        <div className="onboarding-dots">
+          {slides.map((item, index) => (
+            <span className={index === step ? 'active' : ''} key={item.title} />
+          ))}
+        </div>
+        <h1>{slide.title}</h1>
+        <p>{slide.body}</p>
+      </section>
+
+      <button className="primary-action onboarding-action" onClick={next} type="button">
+        {isLast ? 'Start WorkPulse' : 'Next'}
+      </button>
     </main>
   );
 }
@@ -842,16 +953,19 @@ function BottomNav({ activeView, setActiveView }) {
 }
 
 export default function App() {
-  const [records, setRecords] = useState({});
+  const storedGuest = localStorage.getItem(GUEST_KEY) === 'true';
+  const [isGuest, setIsGuest] = useState(storedGuest);
+  const [records, setRecords] = useState(() => (storedGuest ? readGuestRecords() : {}));
   const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY) ?? '');
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => (storedGuest ? readGuestUser() : null));
   const [now, setNow] = useState(Date.now());
   const [activeView, setActiveView] = useState('home');
-  const [showSplash, setShowSplash] = useState(() => localStorage.getItem('workpulse-started') !== 'true');
+  const [showSplash, setShowSplash] = useState(() => localStorage.getItem(SPLASH_KEY) !== 'true');
+  const [showOnboarding, setShowOnboarding] = useState(() => localStorage.getItem(ONBOARDING_KEY) !== 'true');
   const [authMode, setAuthMode] = useState('login');
   const [authError, setAuthError] = useState('');
   const [actionError, setActionError] = useState('');
-  const [loadingSession, setLoadingSession] = useState(Boolean(token));
+  const [loadingSession, setLoadingSession] = useState(Boolean(token) && !storedGuest);
   const [loadingAuth, setLoadingAuth] = useState(false);
   const [breakPrompt, setBreakPrompt] = useState(null);
 
@@ -864,6 +978,11 @@ export default function App() {
     let isMounted = true;
 
     async function loadSession() {
+      if (isGuest) {
+        setLoadingSession(false);
+        return;
+      }
+
       if (!token) {
         setLoadingSession(false);
         return;
@@ -889,7 +1008,17 @@ export default function App() {
     return () => {
       isMounted = false;
     };
-  }, [token]);
+  }, [isGuest, token]);
+
+  useEffect(() => {
+    if (!isGuest) return;
+    localStorage.setItem(GUEST_RECORDS_KEY, JSON.stringify(records));
+  }, [isGuest, records]);
+
+  useEffect(() => {
+    if (!isGuest || !user) return;
+    localStorage.setItem(GUEST_USER_KEY, JSON.stringify(user));
+  }, [isGuest, user]);
 
   const today = useMemo(() => new Date(now), [now]);
   const dateKey = formatDateKey(today);
@@ -905,6 +1034,16 @@ export default function App() {
     return total + calculateCompletedMs(records[key] ?? { sessions: [] });
   }, 0);
 
+  function updateGuestToday(updater) {
+    setRecords((current) => {
+      const record = getTodayRecord(current, dateKey);
+      return {
+        ...current,
+        [dateKey]: updater(record),
+      };
+    });
+  }
+
   async function handleAuth(form) {
     setLoadingAuth(true);
     setAuthError('');
@@ -915,17 +1054,38 @@ export default function App() {
         body: form,
       });
       localStorage.setItem(TOKEN_KEY, data.token);
-      localStorage.setItem('workpulse-started', 'true');
+      localStorage.setItem(SPLASH_KEY, 'true');
+      localStorage.setItem(ONBOARDING_KEY, 'true');
+      localStorage.removeItem(GUEST_KEY);
       setToken(data.token);
+      setIsGuest(false);
       setUser(data.user);
       setRecords(data.records ?? {});
       setShowSplash(false);
+      setShowOnboarding(false);
       setActiveView('home');
     } catch (error) {
       setAuthError(error.message);
     } finally {
       setLoadingAuth(false);
     }
+  }
+
+  function startGuestMode() {
+    const guestUser = readGuestUser();
+    localStorage.setItem(GUEST_KEY, 'true');
+    localStorage.setItem(SPLASH_KEY, 'true');
+    localStorage.setItem(ONBOARDING_KEY, 'true');
+    localStorage.removeItem(TOKEN_KEY);
+    setIsGuest(true);
+    setToken('');
+    setUser(guestUser);
+    setRecords(readGuestRecords());
+    setAuthError('');
+    setActionError('');
+    setShowSplash(false);
+    setShowOnboarding(false);
+    setActiveView('home');
   }
 
   function requestPunchIn() {
@@ -943,6 +1103,31 @@ export default function App() {
   async function punchIn(previousOutReason = 'checkout') {
     setActionError('');
 
+    if (isGuest) {
+      if (activeSession) {
+        setActionError('You are already punched in');
+        return;
+      }
+
+      updateGuestToday((record) => {
+        const sessions = [...record.sessions];
+        const previousIndex = sessions.reduce((foundIndex, session, index) => (
+          session.out ? index : foundIndex
+        ), -1);
+
+        if (previousIndex >= 0) {
+          sessions[previousIndex] = {
+            ...sessions[previousIndex],
+            outReason: previousOutReason,
+          };
+        }
+
+        sessions.push({ in: Date.now(), out: null, outReason: null });
+        return { ...record, sessions };
+      });
+      return;
+    }
+
     try {
       const data = await apiRequest('/api/punch/in', {
         method: 'POST',
@@ -957,6 +1142,29 @@ export default function App() {
 
   async function punchOut() {
     setActionError('');
+
+    if (isGuest) {
+      if (!activeSession) {
+        setActionError('You need to punch in first');
+        return;
+      }
+
+      updateGuestToday((record) => {
+        const sessions = [...record.sessions];
+        const activeIndex = sessions.findIndex((session) => !session.out);
+
+        if (activeIndex >= 0) {
+          sessions[activeIndex] = {
+            ...sessions[activeIndex],
+            out: Date.now(),
+            outReason: 'checkout',
+          };
+        }
+
+        return { ...record, sessions };
+      });
+      return;
+    }
 
     try {
       const data = await apiRequest('/api/punch/out', {
@@ -978,6 +1186,12 @@ export default function App() {
   async function saveNotes(notes, focus) {
     setActionError('');
 
+    if (isGuest) {
+      updateGuestToday((record) => ({ ...record, notes, focus }));
+      setActiveView('home');
+      return;
+    }
+
     try {
       const data = await apiRequest(`/api/records/${dateKey}/notes`, {
         method: 'PUT',
@@ -994,6 +1208,12 @@ export default function App() {
   async function clearAll() {
     setActionError('');
 
+    if (isGuest) {
+      setRecords({});
+      setActiveView('home');
+      return;
+    }
+
     try {
       const data = await apiRequest('/api/records', {
         method: 'DELETE',
@@ -1008,6 +1228,16 @@ export default function App() {
 
   async function saveLocation(workplace, location) {
     setActionError('');
+
+    if (isGuest) {
+      setUser((current) => ({
+        ...(current ?? defaultGuestUser()),
+        workplace,
+        location: location ?? null,
+      }));
+      setActiveView('home');
+      return;
+    }
 
     try {
       const data = await apiRequest('/api/me/location', {
@@ -1028,6 +1258,8 @@ export default function App() {
 
   function logout() {
     localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(GUEST_KEY);
+    setIsGuest(false);
     setToken('');
     setUser(null);
     setRecords({});
@@ -1035,8 +1267,13 @@ export default function App() {
   }
 
   function startApp() {
-    localStorage.setItem('workpulse-started', 'true');
+    localStorage.setItem(SPLASH_KEY, 'true');
     setShowSplash(false);
+  }
+
+  function finishOnboarding() {
+    localStorage.setItem(ONBOARDING_KEY, 'true');
+    setShowOnboarding(false);
   }
 
   if (showSplash) {
@@ -1061,6 +1298,17 @@ export default function App() {
     );
   }
 
+  if (showOnboarding && !user) {
+    return (
+      <main className="page">
+        <section className="phone-shell">
+          <StatusBar now={today} />
+          <OnboardingScreen onDone={finishOnboarding} />
+        </section>
+      </main>
+    );
+  }
+
   if (!user) {
     return (
       <main className="page">
@@ -1070,6 +1318,7 @@ export default function App() {
             error={authError}
             loading={loadingAuth}
             mode={authMode}
+            onGuest={startGuestMode}
             onSubmit={handleAuth}
             setMode={setAuthMode}
           />
