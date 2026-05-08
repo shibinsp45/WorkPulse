@@ -208,19 +208,6 @@ function getDailyEvents(sessions) {
   });
 }
 
-function StatusBar({ now }) {
-  return (
-    <div className="status-bar">
-      <span>{now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
-      <div>
-        <span className="signal-dot" />
-        <span className="signal-dot" />
-        <span className="battery" />
-      </div>
-    </div>
-  );
-}
-
 function WorkPulseLogo({ compact = false }) {
   return (
     <div className={compact ? 'workpulse-logo compact' : 'workpulse-logo'}>
@@ -304,7 +291,7 @@ function HomeScreen({ activeSession, breakMs, completedMs, onBreak, punchIn, pun
   const lastClosed = todayRecord.sessions.filter((session) => session.out && session.outReason !== 'break').at(-1);
 
   return (
-    <div className="screen-stack">
+    <div className="screen-stack home-stack">
       <div className={activeSession ? 'state-pill checked-in' : onBreak ? 'state-pill on-break' : 'state-pill checked-out'}>
         {activeSession ? 'Checked In' : onBreak ? 'On Break' : 'Checked Out'}
       </div>
@@ -1279,8 +1266,7 @@ export default function App() {
   if (showSplash) {
     return (
       <main className="page">
-        <section className="phone-shell">
-          <StatusBar now={today} />
+        <section className="phone-shell intro-shell">
           <SplashScreen onStart={startApp} />
         </section>
       </main>
@@ -1290,8 +1276,7 @@ export default function App() {
   if (loadingSession) {
     return (
       <main className="page">
-        <section className="phone-shell">
-          <StatusBar now={today} />
+        <section className="phone-shell intro-shell">
           <div className="loading-screen">Loading WorkPulse...</div>
         </section>
       </main>
@@ -1301,8 +1286,7 @@ export default function App() {
   if (showOnboarding && !user) {
     return (
       <main className="page">
-        <section className="phone-shell">
-          <StatusBar now={today} />
+        <section className="phone-shell intro-shell">
           <OnboardingScreen onDone={finishOnboarding} />
         </section>
       </main>
@@ -1312,8 +1296,7 @@ export default function App() {
   if (!user) {
     return (
       <main className="page">
-        <section className="phone-shell">
-          <StatusBar now={today} />
+        <section className="phone-shell intro-shell">
           <AuthScreen
             error={authError}
             loading={loadingAuth}
@@ -1329,8 +1312,10 @@ export default function App() {
 
   return (
     <main className="page">
-      <section className="phone-shell" aria-label="WorkPulse employee time tracker">
-        <StatusBar now={today} />
+      <section
+        className={`phone-shell app-shell ${['notifications', 'notes', 'location'].includes(activeView) ? 'detail-shell' : ''}`}
+        aria-label="WorkPulse employee time tracker"
+      >
         <AppHeader activeView={activeView} now={today} setActiveView={setActiveView} user={user} />
 
         <section className="content-area">
