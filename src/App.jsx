@@ -79,7 +79,7 @@ function calculateBreakMs(record) {
 
 function StatCard({ label, value, note }) {
   return (
-    <article className="stat-card">
+    <article className="metric-card">
       <span>{label}</span>
       <strong>{value}</strong>
       <p>{note}</p>
@@ -124,13 +124,13 @@ function WeekTable({ records, today }) {
   }, 0);
 
   return (
-    <section className="panel">
-      <div className="panel-title">
+    <section className="app-card">
+      <div className="section-head">
         <div>
           <span>Weekly Summary</span>
-          <h2>{formatHours(weeklyMs)}</h2>
+          <h2>This week</h2>
         </div>
-        <p>Mon to Sun</p>
+        <strong>{formatHours(weeklyMs)}</strong>
       </div>
 
       <div className="week-list">
@@ -154,6 +154,52 @@ function WeekTable({ records, today }) {
   );
 }
 
+function HistoryView({ records }) {
+  const rows = Object.entries(records)
+    .map(([date, record]) => ({
+      date,
+      sessions: record.sessions.length,
+      worked: calculateCompletedMs(record),
+      breakTime: calculateBreakMs(record),
+    }))
+    .sort((a, b) => b.date.localeCompare(a.date));
+
+  if (rows.length === 0) {
+    return (
+      <section className="app-card">
+        <div className="empty-state">
+          <strong>No history yet</strong>
+          <span>Your saved days will appear here after you clock in and out.</span>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="app-card">
+      <div className="section-head">
+        <div>
+          <span>Saved Records</span>
+          <h2>History</h2>
+        </div>
+        <strong>{rows.length} days</strong>
+      </div>
+
+      <div className="history-list">
+        {rows.map((row) => (
+          <article className="history-row" key={row.date}>
+            <div>
+              <strong>{row.date}</strong>
+              <span>{row.sessions} sessions / {formatHours(row.breakTime)} break</span>
+            </div>
+            <b>{formatHours(row.worked)}</b>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export default function App() {
   const [records, setRecords] = useState(() => {
     try {
@@ -163,6 +209,7 @@ export default function App() {
     }
   });
   const [now, setNow] = useState(Date.now());
+  const [activeView, setActiveView] = useState('today');
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
@@ -180,6 +227,10 @@ export default function App() {
   const completedMs = calculateCompletedMs(todayRecord);
   const totalMs = calculateWorkedMs(todayRecord, now);
   const breakMs = calculateBreakMs(todayRecord);
+  const weeklyMs = getWeekDays(today).reduce((total, day) => {
+    const key = formatDateKey(day);
+    return total + calculateCompletedMs(records[key] ?? { sessions: [] });
+  }, 0);
 
   function punch() {
     setRecords((current) => {
@@ -209,58 +260,100 @@ export default function App() {
   }
 
   return (
-    <main className="app-shell">
-      <section className="hero">
-        <div>
-          <p>Employee Time Clock</p>
-          <h1>Daily and weekly working hours, calculated as employees punch in and out.</h1>
-        </div>
-        <div className="today-chip">
-          <span>{formatLongDate(today)}</span>
-          <strong>{today.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong>
-        </div>
-      </section>
-
-      <section className="dashboard">
-        <div className="clock-panel">
-          <div className="status-row">
-            <span className={activeSession ? 'status-pill active' : 'status-pill'}>
-              {activeSession ? 'Currently In' : 'Currently Out'}
-            </span>
-            <button className="text-button" onClick={clearToday} type="button">
-              Reset today
-            </button>
+    <main className="page">
+      <section className="app-frame" aria-label="WorkPulse time clock app">
+        <header className="app-topbar">
+          <div className="brand-mark">W</div>
+          <div>
+            <span>WorkPulse</span>
+            <strong>{formatLongDate(today)}</strong>
           </div>
-
-          <div className="timer">
-            <span>Current completed hours</span>
-            <strong>{formatHours(totalMs)}</strong>
-            <p>{activeSession ? `Session started at ${formatClock(activeSession.in)}` : 'Ready for the next In punch'}</p>
-          </div>
-
-          <button className={activeSession ? 'punch-button out' : 'punch-button'} onClick={punch} type="button">
-            {activeSession ? 'Out' : 'In'}
+          <button className="icon-button" onClick={clearToday} title="Reset today" type="button">
+            ↺
           </button>
+        </header>
 
-          <div className="stats-grid">
-            <StatCard label="Completed" value={formatHours(completedMs)} note="Closed sessions" />
-            <StatCard label="Break" value={formatHours(breakMs)} note="Time between Out and next In" />
-            <StatCard label="Today Total" value={formatHours(totalMs)} note="Includes running session" />
+        <section className={activeSession ? 'status-card active' : 'status-card'}>
+          <div className="status-copy">
+            <span>{activeSession ? 'You are clocked in' : 'You are clocked out'}</span>
+            <h1>{formatHours(totalMs)}</h1>
+            <p>{activeSession ? `Started at ${formatClock(activeSession.in)}` : 'Tap In to start tracking work time'}</p>
           </div>
-        </div>
-
-        <section className="panel">
-          <div className="panel-title">
-            <div>
-              <span>Today Timeline</span>
-              <h2>{todayRecord.sessions.length} punches</h2>
-            </div>
-            <p>{dateKey}</p>
+          <div className="time-now">
+            <span>Now</span>
+            <strong>{today.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</strong>
           </div>
-          <Timeline sessions={todayRecord.sessions} />
         </section>
 
-        <WeekTable records={records} today={today} />
+        <div className="view-area">
+          {activeView === 'today' ? (
+            <>
+              <button className={activeSession ? 'punch-button out' : 'punch-button'} onClick={punch} type="button">
+                <span>{activeSession ? 'Clock Out' : 'Clock In'}</span>
+                <strong>{activeSession ? 'Out' : 'In'}</strong>
+              </button>
+
+              <section className="metrics-grid" aria-label="Daily hour totals">
+                <StatCard label="Completed" value={formatHours(completedMs)} note="Closed sessions" />
+                <StatCard label="Break" value={formatHours(breakMs)} note="Between shifts" />
+                <StatCard label="Week" value={formatHours(weeklyMs)} note="Mon to Sun" />
+              </section>
+
+              <section className="app-card">
+                <div className="section-head">
+                  <div>
+                    <span>Today Timeline</span>
+                    <h2>{todayRecord.sessions.length ? `${todayRecord.sessions.length} sessions` : 'No sessions'}</h2>
+                  </div>
+                  <b>{dateKey}</b>
+                </div>
+                <Timeline sessions={todayRecord.sessions} />
+              </section>
+            </>
+          ) : null}
+
+          {activeView === 'week' ? <WeekTable records={records} today={today} /> : null}
+          {activeView === 'history' ? <HistoryView records={records} /> : null}
+          {activeView === 'more' ? (
+            <section className="app-card">
+              <div className="section-head">
+                <div>
+                  <span>Manage</span>
+                  <h2>Options</h2>
+                </div>
+              </div>
+              <div className="option-list">
+                <button onClick={clearToday} type="button">
+                  <span>↺</span>
+                  Reset today
+                </button>
+                <button onClick={() => setRecords({})} type="button">
+                  <span>×</span>
+                  Clear all records
+                </button>
+              </div>
+            </section>
+          ) : null}
+        </div>
+
+        <nav className="bottom-tabs" aria-label="App navigation">
+          <button className={activeView === 'today' ? 'active' : ''} onClick={() => setActiveView('today')} type="button">
+            <span>⌂</span>
+            Today
+          </button>
+          <button className={activeView === 'week' ? 'active' : ''} onClick={() => setActiveView('week')} type="button">
+            <span>◷</span>
+            Week
+          </button>
+          <button className={activeView === 'history' ? 'active' : ''} onClick={() => setActiveView('history')} type="button">
+            <span>▦</span>
+            History
+          </button>
+          <button className={activeView === 'more' ? 'active' : ''} onClick={() => setActiveView('more')} type="button">
+            <span>⋯</span>
+            More
+          </button>
+        </nav>
       </section>
     </main>
   );
