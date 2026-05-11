@@ -260,7 +260,7 @@ function AppHeader({ activeView, now, setActiveView, user }) {
   const isBackView = DETAIL_VIEWS.has(activeView);
 
   return (
-    <header className="app-header">
+    <header className={isBackView ? 'app-header detail-header' : 'app-header'}>
       {isBackView ? (
         <button className="header-icon" onClick={() => setActiveView('home')} type="button">
           <ArrowLeft size={18} />
@@ -355,12 +355,6 @@ function HomeScreen({ activeSession, breakMs, completedMs, distanceMeters, liveL
 
   return (
     <div className="screen-stack home-stack">
-      {activeSession || onBreak ? (
-        <div className={activeSession ? 'state-pill checked-in' : 'state-pill on-break'}>
-          {activeSession ? 'Checked In' : 'On Break'}
-        </div>
-      ) : null}
-
       {activeSession ? (
         <section className="glass-card live-card">
           <span className="eyebrow green">Live Timer</span>
