@@ -249,6 +249,7 @@ app.post('/api/records/:date/sessions', requireAuth, async (request, response) =
   const date = String(request.params.date ?? todayKey());
   const inTime = Number(request.body.in);
   const outTime = Number(request.body.out);
+  const allowOverlap = Boolean(request.body.allowOverlap);
   const user = request.user;
   const record = normalizeRecord(user.records?.[date]);
 
@@ -260,8 +261,8 @@ app.post('/api/records/:date/sessions', requireAuth, async (request, response) =
     return response.status(400).json({ message: 'Punch out must be after punch in' });
   }
 
-  if (hasSessionOverlap(record.sessions, inTime, outTime)) {
-    return response.status(409).json({ message: 'Manual time overlaps an existing session' });
+  if (hasSessionOverlap(record.sessions, inTime, outTime) && !allowOverlap) {
+    return response.status(409).json({ message: 'Manual time overlaps an existing session', canOverride: true });
   }
 
   record.sessions = sortSessions([

@@ -13,13 +13,17 @@ import {
   FileText,
   HelpCircle,
   Home,
+  GripVertical,
   LockKeyhole,
   Mail,
   LogOut,
   MapPin,
+  Moon,
+  Pencil,
   Plus,
   Save,
   Shield,
+  Sun,
   Timer,
   User,
 } from 'lucide-react';
@@ -30,10 +34,28 @@ const GUEST_KEY = 'workpulse-guest-session';
 const GUEST_RECORDS_KEY = 'workpulse-guest-records';
 const GUEST_USER_KEY = 'workpulse-guest-user';
 const ONBOARDING_KEY = 'workpulse-onboarding-v2-done';
+const THEME_KEY = 'workpulse-theme';
+const DASHBOARD_ORDER_KEY = 'workpulse-dashboard-order';
 const TARGET_MS = 8 * 60 * 60 * 1000;
 const WORKPLACE_RADIUS_METERS = 150;
 const WORKPLACE = 'Technopark Phase 1';
-const DETAIL_VIEWS = new Set(['notifications', 'notes', 'location', 'manual']);
+const DETAIL_VIEWS = new Set(['notifications', 'notes', 'location', 'manual', 'personal', 'schedule', 'privacy', 'export', 'support']);
+const DASHBOARD_SECTIONS = ['hero', 'target', 'summary', 'metrics'];
+const VIEW_TITLES = {
+  home: 'Home',
+  timeline: 'Timeline',
+  reports: 'Reports',
+  profile: 'Profile',
+  notifications: 'Notifications',
+  notes: 'Work Notes',
+  location: 'Location',
+  manual: 'Add Time',
+  personal: 'Personal Info',
+  schedule: 'Schedule',
+  privacy: 'Privacy',
+  export: 'Export Data',
+  support: 'Support',
+};
 
 const focusTags = ['Development', 'Design', 'Meeting', 'Testing', 'Research', 'Other'];
 
@@ -49,7 +71,9 @@ async function apiRequest(path, { body, method = 'GET', token } = {}) {
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    throw new Error(data.message ?? 'Something went wrong');
+    const error = new Error(data.message ?? 'Something went wrong');
+    error.data = data;
+    throw error;
   }
 
   return data;
@@ -81,6 +105,17 @@ function readGuestUser() {
 
 function readGuestRecords() {
   return readJsonStorage(GUEST_RECORDS_KEY, {});
+}
+
+function readDashboardOrder() {
+  const stored = readJsonStorage(DASHBOARD_ORDER_KEY, DASHBOARD_SECTIONS);
+
+  if (!Array.isArray(stored)) {
+    return DASHBOARD_SECTIONS;
+  }
+
+  const valid = stored.filter((item) => DASHBOARD_SECTIONS.includes(item));
+  return [...valid, ...DASHBOARD_SECTIONS.filter((item) => !valid.includes(item))];
 }
 
 function pad(value) {
@@ -256,45 +291,67 @@ function WorkPulseLogo({ compact = false }) {
   );
 }
 
-function AppHeader({ activeView, now, setActiveView, user }) {
+function AppHeader({ activeView, now, onBack, setActiveView, theme, toggleTheme, user }) {
   const isBackView = DETAIL_VIEWS.has(activeView);
+  const isHomeView = activeView === 'home';
+  const title = VIEW_TITLES[activeView] ?? 'WorkPulse';
+  const workplace = user?.workplace ?? WORKPLACE;
+
+  if (!isHomeView) {
+    return (
+      <header className={isBackView ? 'app-header compact-header detail-header' : 'app-header compact-header'}>
+        <div className="compact-header-top">
+          <button className="location-chip location-chip-button" onClick={() => setActiveView('location')} type="button" aria-label="Edit workplace location">
+            <MapPin size={13} />
+            {workplace}
+            <Pencil size={12} />
+          </button>
+          <div className="header-actions compact-actions">
+            <button className="header-utility-action" onClick={() => setActiveView('manual')} type="button">
+              <Clock3 size={15} />
+              Add Time
+            </button>
+            <button className="header-icon has-dot" onClick={() => setActiveView('notifications')} type="button" aria-label="Open notifications">
+              <Bell size={18} />
+            </button>
+          </div>
+        </div>
+
+        <div className="compact-header-bottom">
+          {isBackView ? (
+            <button className="header-icon" onClick={onBack} type="button" aria-label="Go back">
+              <ArrowLeft size={18} />
+            </button>
+          ) : null}
+          <h2>{title}</h2>
+        </div>
+      </header>
+    );
+  }
 
   return (
-    <header className={isBackView ? 'app-header detail-header' : 'app-header'}>
-      {isBackView ? (
-        <button className="header-icon" onClick={() => setActiveView('home')} type="button">
-          <ArrowLeft size={18} />
+    <header className="app-header">
+      <div className="header-copy">
+        <button className="location-chip location-chip-button" onClick={() => setActiveView('location')} type="button" aria-label="Edit workplace location">
+          <MapPin size={13} />
+          {workplace}
+          <Pencil size={12} />
         </button>
-      ) : (
-        <div className="header-copy">
-          <div className="location-chip">
-            <MapPin size={13} />
-            {user?.workplace ?? WORKPLACE}
-          </div>
-          <div>
-            <p>{getGreeting(now)},</p>
-            <h1>{user?.name ?? 'Employee'}</h1>
-            <span>{formatLongDate(now)}</span>
-          </div>
+        <div>
+          <p>{getGreeting(now)},</p>
+          <h1>{user?.name ?? 'Employee'}</h1>
+          <span>{formatLongDate(now)}</span>
         </div>
-      )}
+      </div>
 
-      {activeView === 'notifications' ? <h2>Notifications</h2> : null}
-      {activeView === 'notes' ? <h2>Work Notes</h2> : null}
-      {activeView === 'location' ? <h2>Location</h2> : null}
-      {activeView === 'manual' ? <h2>Add Time</h2> : null}
-
-      {!isBackView ? (
-        <div className="header-actions">
-          <button className="header-icon has-dot" onClick={() => setActiveView('notifications')} type="button">
-            <Bell size={18} />
-          </button>
-        </div>
-      ) : (
-        <button className="header-action" onClick={() => setActiveView('home')} type="button">
-          Done
+      <div className="header-actions">
+        <button className="header-icon" onClick={toggleTheme} type="button" aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+          {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
         </button>
-      )}
+        <button className="header-icon has-dot" onClick={() => setActiveView('notifications')} type="button" aria-label="Open notifications">
+          <Bell size={18} />
+        </button>
+      </div>
     </header>
   );
 }
@@ -313,73 +370,130 @@ function MetricCard({ label, value, hint, icon: Icon }) {
 }
 
 function WorkplaceCard({ distanceMeters, liveLocation, setActiveView, user }) {
-  const hasSavedLocation = Boolean(user?.location);
-  const locationCopy = hasSavedLocation
-    ? `${formatDistance(distanceMeters)} / ${distanceMeters !== null && distanceMeters <= WORKPLACE_RADIUS_METERS ? 'within range' : 'outside range'}`
-    : liveLocation
-      ? 'Live location active'
-      : 'Allow location';
-
   return (
     <section className="glass-card workplace-card">
       <div className="workplace-main">
         <div>
           <span className="eyebrow">Workplace</span>
           <h3>{user?.workplace ?? WORKPLACE}</h3>
-          <p>{locationCopy}</p>
-        </div>
-        <button className="pin-button" onClick={() => setActiveView('location')} type="button">
-          <MapPin size={20} />
-        </button>
-      </div>
-      <div className="workplace-live">
-        <div>
-          <span className="eyebrow">Live Location</span>
-          {liveLocation ? (
-            <strong>Live location active</strong>
-          ) : (
-            <button className="location-inline-action" onClick={() => setActiveView('location')} type="button">
-              Allow Location
-            </button>
-          )}
         </div>
       </div>
     </section>
   );
 }
 
-function HomeScreen({ activeSession, breakMs, completedMs, distanceMeters, liveLocation, onBreak, punchIn, punchOut, setActiveView, todayRecord, totalMs, user, weeklyMs }) {
+function ManualTimeShortcut({ compact = false, setActiveView }) {
+  if (compact) {
+    return (
+      <div className="manual-inline-card">
+        <span>Missed a punch?</span>
+        <button onClick={() => setActiveView('manual')} type="button">
+          <Clock3 size={15} />
+          Add manually
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <section className="manual-shortcut-card">
+      <div className="manual-shortcut-icon">
+        <Clock3 size={20} />
+      </div>
+      <div>
+        <span className="eyebrow">Forgot to punch?</span>
+        <strong>Add time manually</strong>
+        <p>Enter punch-in and punch-out time later.</p>
+      </div>
+      <button onClick={() => setActiveView('manual')} type="button" aria-label="Add time manually">
+        <Plus size={16} />
+        Add
+      </button>
+    </section>
+  );
+}
+
+function DashboardPanel({ children, dragId, dropId, id, moveSection, setDragId, setDropId }) {
+  return (
+    <div
+      className={`home-panel panel-${id}${dragId === id ? ' dragging' : ''}${dropId === id ? ' drop-target' : ''}`}
+      draggable
+      onDragEnd={() => {
+        setDragId('');
+        setDropId('');
+      }}
+      onDragEnter={() => {
+        if (dragId && dragId !== id) {
+          setDropId(id);
+        }
+      }}
+      onDragOver={(event) => event.preventDefault()}
+      onDragStart={() => setDragId(id)}
+      onDrop={(event) => {
+        event.preventDefault();
+        moveSection(dragId, id);
+        setDragId('');
+        setDropId('');
+      }}
+    >
+      <div className="panel-drag-handle" aria-hidden="true">
+        <GripVertical size={16} />
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function HomeScreen({ activeSession, breakMs, completedMs, dashboardOrder, distanceMeters, liveLocation, onBreak, punchIn, punchOut, setActiveView, setDashboardOrder, todayRecord, totalMs, user, weeklyMs }) {
   const remainingMs = Math.max(0, TARGET_MS - totalMs);
   const overtimeMs = Math.max(0, totalMs - TARGET_MS);
   const lastClosed = todayRecord.sessions.filter((session) => session.out && session.outReason !== 'break').at(-1);
+  const [dragId, setDragId] = useState('');
+  const [dropId, setDropId] = useState('');
 
-  return (
-    <div className="screen-stack home-stack">
-      {activeSession ? (
-        <section className="glass-card live-card">
-          <span className="eyebrow green">Live Timer</span>
-          <strong>{formatTimer(totalMs)}</strong>
-          <p>Working since {formatClock(activeSession.in)}</p>
-          <small>On track</small>
-          <button className="ready-punch-button danger" onClick={punchOut} type="button">
-            Punch Out
-          </button>
-        </section>
-      ) : (
-        <section className="empty-clock-card">
-          <div className="clock-illustration">
-            <Timer size={46} />
-          </div>
-          <h3>{onBreak ? 'Break in progress' : lastClosed ? 'You are checked out' : 'Ready to start'}</h3>
-          <p>{onBreak ? 'Punch in when you are back. We will count the gap as break time.' : lastClosed ? 'Punch in again to continue your hours.' : 'Tap punch in to start tracking your work hours.'}</p>
-          <button className="ready-punch-button" onClick={punchIn} type="button">
-            Punch In
-          </button>
-        </section>
-      )}
+  function moveSection(sourceId, targetId) {
+    if (!sourceId || !targetId || sourceId === targetId) return;
 
-      <WorkplaceCard distanceMeters={distanceMeters} liveLocation={liveLocation} setActiveView={setActiveView} user={user} />
+    setDashboardOrder((current) => {
+      const next = [...current];
+      const sourceIndex = next.indexOf(sourceId);
+      const targetIndex = next.indexOf(targetId);
 
+      if (sourceIndex < 0 || targetIndex < 0) {
+        return current;
+      }
+
+      next.splice(sourceIndex, 1);
+      next.splice(targetIndex, 0, sourceId);
+      return next;
+    });
+  }
+
+  const sections = {
+    hero: activeSession ? (
+      <section className="glass-card live-card">
+        <span className="eyebrow green">Live Timer</span>
+        <strong>{formatTimer(totalMs)}</strong>
+        <p>Working since {formatClock(activeSession.in)}</p>
+        <small>On track</small>
+        <button className="ready-punch-button danger" onClick={punchOut} type="button">
+          Punch Out
+        </button>
+      </section>
+    ) : (
+      <section className="empty-clock-card">
+        <div className="clock-illustration">
+          <Timer size={46} />
+        </div>
+        <h3>{onBreak ? 'Break in progress' : lastClosed ? 'You are checked out' : 'Ready to start'}</h3>
+        <p>{onBreak ? 'Punch in when you are back. We will count the gap as break time.' : lastClosed ? 'Punch in again to continue your hours.' : 'Tap punch in to start tracking your work hours.'}</p>
+        <button className="ready-punch-button" onClick={punchIn} type="button">
+          Punch In
+        </button>
+        <ManualTimeShortcut compact setActiveView={setActiveView} />
+      </section>
+    ),
+    target: (
       <section className="target-card">
         <span className="eyebrow">Today target</span>
         <div>
@@ -390,7 +504,8 @@ function HomeScreen({ activeSession, breakMs, completedMs, distanceMeters, liveL
           <span>{Math.min(100, Math.floor((totalMs / TARGET_MS) * 100))}%</span>
         </div>
       </section>
-
+    ),
+    summary: (
       <section className="summary-card">
         <div className="section-title">
           <div>
@@ -411,13 +526,33 @@ function HomeScreen({ activeSession, breakMs, completedMs, distanceMeters, liveL
         <SummaryRow label="Break Time" value={formatHours(breakMs)} />
         <SummaryRow label="Overtime" value={formatHours(overtimeMs)} positive />
       </section>
-
+    ),
+    metrics: (
       <section className="quick-grid">
         <MetricCard icon={Clock3} label="Worked" value={formatHours(totalMs)} hint="Today" />
         <MetricCard icon={Timer} label="Remaining" value={formatHours(remainingMs)} hint="Target left" />
         <MetricCard icon={Coffee} label="Break" value={formatHours(breakMs)} hint="Away time" />
         <MetricCard icon={BarChart3} label="Week" value={formatHours(weeklyMs)} hint="Mon to Sun" />
       </section>
+    ),
+  };
+  const orderedSections = [...dashboardOrder.filter((item) => sections[item]), ...Object.keys(sections).filter((item) => !dashboardOrder.includes(item))];
+
+  return (
+    <div className="screen-stack home-stack">
+      {orderedSections.map((sectionId) => (
+        <DashboardPanel
+          dragId={dragId}
+          dropId={dropId}
+          id={sectionId}
+          key={sectionId}
+          moveSection={moveSection}
+          setDragId={setDragId}
+          setDropId={setDropId}
+        >
+          {sections[sectionId]}
+        </DashboardPanel>
+      ))}
     </div>
   );
 }
@@ -439,7 +574,7 @@ function TimelineScreen({ records, today, todayRecord }) {
     <div className="screen-stack">
       <div className="month-title">
         <h2>Timeline</h2>
-        <button type="button">
+        <button type="button" aria-label="Open calendar">
           <CalendarDays size={18} />
         </button>
       </div>
@@ -523,16 +658,134 @@ function HistoryList({ records }) {
   );
 }
 
+function getWeeklyHoursSeries(records, today) {
+  return getWeekDays(today).map((day) => {
+    const key = formatDateKey(day);
+    return {
+      key,
+      label: day.toLocaleDateString([], { weekday: 'short' }),
+      shortLabel: day.toLocaleDateString([], { weekday: 'narrow' }),
+      value: calculateCompletedMs(records[key] ?? { sessions: [] }),
+    };
+  });
+}
+
+function WeeklyChartsPanel({ series }) {
+  const [mode, setMode] = useState('bar');
+  const maxValue = Math.max(TARGET_MS, ...series.map((item) => item.value), 1);
+  const bestDay = [...series].sort((a, b) => b.value - a.value)[0];
+  const width = 460;
+  const height = 220;
+  const paddingX = 24;
+  const paddingY = 20;
+  const drawableWidth = width - paddingX * 2;
+  const drawableHeight = height - paddingY * 2;
+  const totalWeekHours = series.reduce((total, item) => total + item.value, 0);
+  const stepX = series.length > 1 ? drawableWidth / (series.length - 1) : 0;
+  const points = series.map((item, index) => {
+    const x = paddingX + stepX * index;
+    const y = height - paddingY - (item.value / maxValue) * drawableHeight;
+    return { ...item, x, y };
+  });
+  const linePoints = points.map((point) => `${point.x},${point.y}`).join(' ');
+  const areaPoints = [
+    `${paddingX},${height - paddingY}`,
+    ...points.map((point) => `${point.x},${point.y}`),
+    `${paddingX + stepX * Math.max(points.length - 1, 0)},${height - paddingY}`,
+  ].join(' ');
+  const guideLines = [0, 0.25, 0.5, 0.75, 1];
+
+  return (
+    <section className="chart-card combined-chart-card">
+      <div className="chart-header">
+        <div>
+          <span className="eyebrow">Weekly hours</span>
+          <h3>{mode === 'bar' ? 'Bar chart' : 'Line chart'}</h3>
+        </div>
+        <div className="chart-toggle" role="tablist" aria-label="Chart type">
+          <button
+            aria-pressed={mode === 'bar'}
+            className={mode === 'bar' ? 'active' : ''}
+            onClick={() => setMode('bar')}
+            type="button"
+          >
+            Bar view
+          </button>
+          <button
+            aria-pressed={mode === 'line'}
+            className={mode === 'line' ? 'active' : ''}
+            onClick={() => setMode('line')}
+            type="button"
+          >
+            Line view
+          </button>
+        </div>
+      </div>
+
+      <div className="chart-summary-strip">
+        <div>
+          <span>Week total</span>
+          <strong>{formatHours(totalWeekHours)}</strong>
+        </div>
+        <div>
+          <span>Best day</span>
+          <strong>{bestDay ? `${bestDay.label} · ${formatHours(bestDay.value)}` : '--'}</strong>
+        </div>
+      </div>
+
+      {mode === 'bar' ? (
+        <div className="chart-bars">
+          {series.map((item) => {
+            const barHeight = Math.max(14, Math.min(132, (item.value / maxValue) * 132));
+            return (
+              <div className="bar-item" key={item.key}>
+                <small>{item.shortLabel}</small>
+                <div className="bar-track">
+                  <span style={{ height: barHeight }} />
+                </div>
+                <b>{formatHours(item.value)}</b>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <>
+          <svg aria-label="Weekly line graph" role="img" viewBox={`0 0 ${width} ${height}`}>
+            {guideLines.map((guide) => {
+              const y = height - paddingY - drawableHeight * guide;
+              return <line className="chart-guide" key={guide} x1={paddingX} x2={width - paddingX} y1={y} y2={y} />;
+            })}
+            <polygon className="chart-area" points={areaPoints} />
+            <polyline className="chart-line" points={linePoints} />
+            {points.map((point) => (
+              <circle className="chart-point" cx={point.x} cy={point.y} key={point.key} r="4.5" />
+            ))}
+          </svg>
+
+          <div className="chart-label-row">
+            {points.map((point) => (
+              <div className="chart-label" key={point.key}>
+                <span>{point.shortLabel}</span>
+                <strong>{formatHours(point.value)}</strong>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
 function ReportsScreen({ records, today }) {
   const monthKey = `${today.getFullYear()}-${pad(today.getMonth() + 1)}`;
   const monthRecords = Object.entries(records).filter(([date]) => date.startsWith(monthKey));
   const totalMs = monthRecords.reduce((total, [, record]) => total + calculateCompletedMs(record), 0);
   const breakMs = monthRecords.reduce((total, [, record]) => total + calculateBreakMs(record), 0);
   const presentDays = monthRecords.filter(([, record]) => normalizeRecord(record).sessions.length > 0).length;
-  const weekDays = getWeekDays(today);
+  const weeklySeries = getWeeklyHoursSeries(records, today);
 
   return (
-    <div className="screen-stack">
+    <div className="screen-stack reports-grid">
       <section className="analytics-hero">
         <div>
           <span>Total Work Hours</span>
@@ -552,35 +805,21 @@ function ReportsScreen({ records, today }) {
         <SummaryRow label="Overtime" value={formatHours(Math.max(0, totalMs - presentDays * TARGET_MS))} positive />
       </section>
 
-      <section className="chart-card">
-        {weekDays.map((day) => {
-          const key = formatDateKey(day);
-          const value = calculateCompletedMs(records[key] ?? { sessions: [] });
-          const height = Math.max(12, Math.min(104, (value / TARGET_MS) * 104));
-          return (
-            <div className="bar-item" key={key}>
-              <div className="bar-track">
-                <span style={{ height }} />
-              </div>
-              <small>{day.toLocaleDateString([], { weekday: 'narrow' })}</small>
-            </div>
-          );
-        })}
-      </section>
+      <WeeklyChartsPanel series={weeklySeries} />
     </div>
   );
 }
 
 function ProfileScreen({ clearAll, logout, setActiveView, user }) {
   const items = [
-    { icon: User, label: 'Personal Information' },
+    { icon: User, label: 'Personal Information', action: () => setActiveView('personal') },
     { icon: MapPin, label: 'Workplace and Location', action: () => setActiveView('location') },
     { icon: Clock3, label: 'Manual Time Entry', action: () => setActiveView('manual') },
-    { icon: Clock3, label: 'Work Schedule', meta: '9:00 AM - 6:00 PM' },
+    { icon: Clock3, label: 'Work Schedule', meta: '9:00 AM - 6:00 PM', action: () => setActiveView('schedule') },
     { icon: Bell, label: 'Notifications', action: () => setActiveView('notifications') },
-    { icon: Shield, label: 'Data and Privacy' },
-    { icon: Download, label: 'Export Data' },
-    { icon: HelpCircle, label: 'Help and Support' },
+    { icon: Shield, label: 'Data and Privacy', action: () => setActiveView('privacy') },
+    { icon: Download, label: 'Export Data', action: () => setActiveView('export') },
+    { icon: HelpCircle, label: 'Help and Support', action: () => setActiveView('support') },
   ];
 
   return (
@@ -624,6 +863,123 @@ function ProfileScreen({ clearAll, logout, setActiveView, user }) {
   );
 }
 
+function DetailCard({ children, icon: Icon, title }) {
+  return (
+    <section className="detail-card">
+      {Icon ? (
+        <div className="detail-card-icon">
+          <Icon size={22} />
+        </div>
+      ) : null}
+      {title ? <h2>{title}</h2> : null}
+      {children}
+    </section>
+  );
+}
+
+function PersonalInformationScreen({ user }) {
+  return (
+    <div className="detail-screen">
+      <DetailCard icon={User} title="Profile">
+        <SummaryRow label="Name" value={user.name || 'Employee'} />
+        <SummaryRow label="Employee ID" value={user.employeeId || '--'} />
+        <SummaryRow label="Email" value={user.email || 'Guest mode'} />
+        <SummaryRow label="Account Type" value={user.isGuest ? 'Guest' : 'Signed in'} />
+      </DetailCard>
+      <DetailCard icon={MapPin} title="Workplace">
+        <SummaryRow label="Location Name" value={user.workplace || WORKPLACE} />
+        <SummaryRow label="Pinned Location" value={user.location ? `${user.location.latitude}, ${user.location.longitude}` : 'Not saved'} />
+      </DetailCard>
+    </div>
+  );
+}
+
+function WorkScheduleScreen() {
+  return (
+    <div className="detail-screen">
+      <DetailCard icon={Clock3} title="Default Schedule">
+        <SummaryRow label="Work Window" value="9:00 AM - 6:00 PM" />
+        <SummaryRow label="Daily Target" value="8h 00m" />
+        <SummaryRow label="Week" value="Monday to Sunday" />
+      </DetailCard>
+      <DetailCard icon={Coffee} title="Break Handling">
+        <p className="detail-copy">When you punch out and return later, WorkPulse asks whether that gap should be counted as break time.</p>
+      </DetailCard>
+    </div>
+  );
+}
+
+function DataPrivacyScreen({ clearAll, isGuest }) {
+  return (
+    <div className="detail-screen">
+      <DetailCard icon={Shield} title="Data and Privacy">
+        <SummaryRow label="Mode" value={isGuest ? 'Guest device storage' : 'Account backend storage'} />
+        <SummaryRow label="Location" value="Used only for workplace prompts" />
+        <SummaryRow label="Export" value="Available anytime" />
+      </DetailCard>
+      <section className="danger-card">
+        <div>
+          <h2>Clear records</h2>
+          <p>This removes your tracked sessions and notes for this profile.</p>
+        </div>
+        <button onClick={clearAll} type="button">Clear All Records</button>
+      </section>
+    </div>
+  );
+}
+
+function ExportDataScreen({ records, user }) {
+  const totalDays = Object.keys(records).length;
+  const totalSessions = Object.values(records).reduce((total, record) => total + normalizeRecord(record).sessions.length, 0);
+
+  function exportData() {
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      user,
+      records,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `workpulse-export-${formatDateKey(new Date())}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  return (
+    <div className="detail-screen">
+      <DetailCard icon={Download} title="Export Data">
+        <SummaryRow label="Tracked Days" value={totalDays} />
+        <SummaryRow label="Sessions" value={totalSessions} />
+        <SummaryRow label="Format" value="JSON" />
+        <button className="primary-action detail-primary" onClick={exportData} type="button">
+          <Download size={18} />
+          Download Export
+        </button>
+      </DetailCard>
+    </div>
+  );
+}
+
+function HelpSupportScreen() {
+  return (
+    <div className="detail-screen">
+      <DetailCard icon={HelpCircle} title="Help and Support">
+        <SummaryRow label="Punch In" value="Starts live timer" />
+        <SummaryRow label="Punch Out" value="Stops current session" />
+        <SummaryRow label="Manual Time" value="Adds missed sessions" />
+        <SummaryRow label="Location" value="Pin workplace for prompts" />
+      </DetailCard>
+      <DetailCard icon={CircleAlert} title="Tips">
+        <p className="detail-copy">Use manual time only for missed punches. If you add overlapping time anyway, totals may double count that period.</p>
+      </DetailCard>
+    </div>
+  );
+}
+
 function ManualTimeScreen({ dateKey, saveManualSession }) {
   const [form, setForm] = useState({
     date: dateKey,
@@ -631,6 +987,7 @@ function ManualTimeScreen({ dateKey, saveManualSession }) {
     outTime: '18:00',
   });
   const [error, setError] = useState('');
+  const [canAddAnyway, setCanAddAnyway] = useState(false);
   const [status, setStatus] = useState('');
   const inAt = parseLocalDateTime(form.date, form.inTime);
   const outAt = parseLocalDateTime(form.date, form.outTime);
@@ -639,18 +996,22 @@ function ManualTimeScreen({ dateKey, saveManualSession }) {
   function updateField(field, value) {
     setForm((current) => ({ ...current, [field]: value }));
     setError('');
+    setCanAddAnyway(false);
     setStatus('');
   }
 
-  async function submit(event) {
+  async function submit(event, allowOverlap = false) {
     event.preventDefault();
-    const result = await saveManualSession(form);
+    const result = await saveManualSession(form, { allowOverlap });
 
     if (!result.ok) {
       setError(result.message);
+      setCanAddAnyway(Boolean(result.canOverride));
       return;
     }
 
+    setError('');
+    setCanAddAnyway(false);
     setStatus('Manual time added to your records');
     setForm((current) => ({
       ...current,
@@ -704,7 +1065,20 @@ function ManualTimeScreen({ dateKey, saveManualSession }) {
           <SummaryRow label="Entry Type" value="Completed session" />
         </section>
 
-        {error ? <p className="form-error">{error}</p> : null}
+        {error ? (
+          <section className="manual-alert">
+            <CircleAlert size={20} />
+            <div>
+              <strong>{error}</strong>
+              {canAddAnyway ? <p>This may double count part of your total hours.</p> : null}
+            </div>
+            {canAddAnyway ? (
+              <button onClick={(event) => submit(event, true)} type="button">
+                Add Anyway
+              </button>
+            ) : null}
+          </section>
+        ) : null}
         {status ? <p className="location-status success">{status}</p> : null}
 
         <button className="primary-action" type="submit">
@@ -720,6 +1094,7 @@ function LocationScreen({ saveLocation, user }) {
   const [workplace, setWorkplace] = useState(user.workplace ?? WORKPLACE);
   const [coords, setCoords] = useState(user.location ?? null);
   const [status, setStatus] = useState('');
+  const hasPinnedLocation = Boolean(coords);
 
   function fetchLocation() {
     if (!navigator.geolocation) {
@@ -735,8 +1110,8 @@ function LocationScreen({ saveLocation, user }) {
           longitude: Number(position.coords.longitude.toFixed(6)),
         };
         setCoords(nextCoords);
-        setWorkplace(`Current Location (${nextCoords.latitude}, ${nextCoords.longitude})`);
-        setStatus('Location fetched. Save to use it.');
+        setWorkplace(`Pinned Location (${nextCoords.latitude}, ${nextCoords.longitude})`);
+        setStatus('Live location fetched and pinned on the map.');
       },
       () => {
         setStatus('Unable to fetch location. Please allow location access or add it manually.');
@@ -753,6 +1128,22 @@ function LocationScreen({ saveLocation, user }) {
         </div>
         <h2>Work Location</h2>
         <p>Add your workplace manually or let the browser fetch your current location.</p>
+      </section>
+
+      <section className={hasPinnedLocation ? 'map-preview pinned' : 'map-preview'}>
+        <div className="map-canvas" aria-hidden="true">
+          <span className="map-road main" />
+          <span className="map-road side" />
+          <span className="map-zone one" />
+          <span className="map-zone two" />
+          <div className="map-pin">
+            <MapPin size={26} />
+          </div>
+        </div>
+        <div className="map-caption">
+          <strong>{hasPinnedLocation ? 'Location pinned on map' : 'No map pin yet'}</strong>
+          <p>{hasPinnedLocation ? `${coords.latitude}, ${coords.longitude}` : 'Fetch live location to drop your workplace pin.'}</p>
+        </div>
       </section>
 
       <label className="location-field">
@@ -775,10 +1166,10 @@ function LocationScreen({ saveLocation, user }) {
 
       <div className="location-actions">
         <button className="secondary-action" onClick={fetchLocation} type="button">
-          Fetch Location
+          Fetch Live Location
         </button>
         <button className="primary-action" onClick={() => saveLocation(workplace, coords)} type="button">
-          Save Location
+          Save Pinned Location
         </button>
       </div>
     </div>
@@ -786,25 +1177,64 @@ function LocationScreen({ saveLocation, user }) {
 }
 
 function NotificationsScreen() {
+  const [filter, setFilter] = useState('all');
+  const [readIds, setReadIds] = useState([]);
+  const [dismissedIds, setDismissedIds] = useState([]);
   const notifications = [
-    { icon: CheckCircle2, title: 'Auto Check-In', body: 'You arrived at workplace', time: '9:12 AM', tone: 'green' },
-    { icon: Coffee, title: 'Reminder', body: 'Do not forget to take a break', time: '11:30 AM', tone: 'blue' },
-    { icon: CircleAlert, title: 'Idle Alert', body: 'Inactive for 20 minutes', time: '1:50 PM', tone: 'orange' },
-    { icon: LogOut, title: 'Auto Check-Out', body: 'You left workplace', time: '6:48 PM', tone: 'red' },
-    { icon: FileText, title: 'Daily Summary', body: 'Tap to view your report', time: 'Yesterday', tone: 'purple' },
+    { id: 'auto-check-in', icon: CheckCircle2, title: 'Auto Check-In', body: 'You arrived at workplace', time: '9:12 AM', tone: 'green', unread: true },
+    { id: 'break-reminder', icon: Coffee, title: 'Reminder', body: 'Do not forget to take a break', time: '11:30 AM', tone: 'blue', unread: true },
+    { id: 'idle-alert', icon: CircleAlert, title: 'Idle Alert', body: 'Inactive for 20 minutes', time: '1:50 PM', tone: 'orange', unread: false },
+    { id: 'auto-check-out', icon: LogOut, title: 'Auto Check-Out', body: 'You left workplace', time: '6:48 PM', tone: 'red', unread: true },
+    { id: 'daily-summary', icon: FileText, title: 'Daily Summary', body: 'Tap to view your report', time: 'Yesterday', tone: 'purple', unread: false },
   ];
+  const activeNotifications = notifications.filter((item) => !dismissedIds.includes(item.id));
+  const unreadCount = activeNotifications.filter((item) => item.unread && !readIds.includes(item.id)).length;
+  const visibleNotifications = activeNotifications.filter((item) => (
+    filter === 'all' || (item.unread && !readIds.includes(item.id))
+  ));
+  const emptyTitle = activeNotifications.length === 0
+    ? 'Notifications cleared'
+    : 'No unread notifications';
+  const emptyCopy = activeNotifications.length === 0
+    ? 'New alerts will appear here.'
+    : 'You are all caught up.';
+
+  function markAsRead() {
+    setReadIds(activeNotifications.map((item) => item.id));
+  }
+
+  function clearNotifications() {
+    setDismissedIds(notifications.map((item) => item.id));
+    setReadIds(notifications.map((item) => item.id));
+  }
 
   return (
     <div className="screen-stack">
-      <div className="segment">
-        <button className="active" type="button">All</button>
-        <button type="button">Unread</button>
+      <div className="segment" role="tablist" aria-label="Notification filter">
+        <button aria-pressed={filter === 'all'} className={filter === 'all' ? 'active' : ''} onClick={() => setFilter('all')} type="button">All</button>
+        <button aria-pressed={filter === 'unread'} className={filter === 'unread' ? 'active' : ''} onClick={() => setFilter('unread')} type="button">
+          Unread {unreadCount ? `(${unreadCount})` : ''}
+        </button>
       </div>
-      <section className="notification-list">
-        {notifications.map((item) => {
+      <div className="notification-toolbar" aria-label="Notification actions">
+        <button disabled={!unreadCount} onClick={markAsRead} type="button">
+          Mark as read
+        </button>
+        <button className="danger" disabled={!activeNotifications.length} onClick={clearNotifications} type="button">
+          Clear
+        </button>
+      </div>
+      <section className="notification-list" aria-live="polite">
+        {visibleNotifications.length === 0 ? (
+          <div className="empty-state compact">
+            <strong>{emptyTitle}</strong>
+            <span>{emptyCopy}</span>
+          </div>
+        ) : null}
+        {visibleNotifications.map((item) => {
           const Icon = item.icon;
           return (
-            <article className="notification-row" key={item.title}>
+            <article className={item.unread && !readIds.includes(item.id) ? 'notification-row unread' : 'notification-row'} key={item.id}>
               <div className={`notice-icon ${item.tone}`}>
                 <Icon size={18} />
               </div>
@@ -862,7 +1292,7 @@ function NotesScreen({ record, saveNotes }) {
 
       <section className="photo-box">
         <h3>Add Photos</h3>
-        <button type="button">
+        <button type="button" aria-label="Add photo">
           <Plus size={24} />
         </button>
       </section>
@@ -1010,22 +1440,10 @@ function AuthScreen({ error, loading, mode, onGuest, onSubmit, setMode }) {
 
 function SplashScreen() {
   return (
-    <main className="splash-screen">
-      <section className="splash-visual" aria-hidden="true">
+    <main className="splash-screen minimal-splash">
+      <section className="splash-copy" aria-label="WorkPulse splash screen">
         <WorkPulseLogo />
-        <div className="splash-preview-card">
-          <span>Today</span>
-          <strong>08:00</strong>
-          <small>Work target</small>
-        </div>
-      </section>
-      <section className="splash-copy">
         <h1>WorkPulse</h1>
-        <p>Track your time. Stay productive.</p>
-        <div className="splash-loader">
-          <span />
-          Opening app
-        </div>
       </section>
     </main>
   );
@@ -1179,6 +1597,9 @@ export default function App() {
   const [user, setUser] = useState(() => (storedGuest ? readGuestUser() : null));
   const [now, setNow] = useState(Date.now());
   const [activeView, setActiveView] = useState('home');
+  const [returnView, setReturnView] = useState('home');
+  const [dashboardOrder, setDashboardOrder] = useState(() => readDashboardOrder());
+  const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) ?? 'light');
   const [showSplash, setShowSplash] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(() => localStorage.getItem(ONBOARDING_KEY) !== 'true');
   const [authMode, setAuthMode] = useState('login');
@@ -1198,9 +1619,18 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setShowSplash(false), 1300);
+    const timer = window.setTimeout(() => setShowSplash(false), 2000);
     return () => window.clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem(THEME_KEY, theme);
+  }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem(DASHBOARD_ORDER_KEY, JSON.stringify(dashboardOrder));
+  }, [dashboardOrder]);
 
   useEffect(() => {
     if (!user) return undefined;
@@ -1469,7 +1899,7 @@ export default function App() {
     await punchIn(isBreak ? 'break' : 'checkout');
   }
 
-  async function saveManualSession({ date, inTime, outTime }) {
+  async function saveManualSession({ date, inTime, outTime }, { allowOverlap = false } = {}) {
     setActionError('');
     const cleanDate = String(date ?? '').trim();
     const inAt = parseLocalDateTime(cleanDate, inTime);
@@ -1490,8 +1920,8 @@ export default function App() {
     if (isGuest) {
       const record = getTodayRecord(records, cleanDate);
 
-      if (hasSessionOverlap(record.sessions, inAt, outAt)) {
-        return { ok: false, message: 'Manual time overlaps an existing session' };
+      if (hasSessionOverlap(record.sessions, inAt, outAt) && !allowOverlap) {
+        return { ok: false, message: 'Manual time overlaps an existing session', canOverride: true };
       }
 
       setRecords((current) => {
@@ -1514,13 +1944,13 @@ export default function App() {
       const data = await apiRequest(`/api/records/${encodeURIComponent(cleanDate)}/sessions`, {
         method: 'POST',
         token,
-        body: { in: inAt, out: outAt },
+        body: { allowOverlap, in: inAt, out: outAt },
       });
       setRecords(data.records ?? {});
       return { ok: true };
     } catch (error) {
       setActionError(error.message);
-      return { ok: false, message: error.message };
+      return { ok: false, message: error.message, canOverride: Boolean(error.data?.canOverride) };
     }
   }
 
@@ -1548,6 +1978,10 @@ export default function App() {
 
   async function clearAll() {
     setActionError('');
+
+    if (!window.confirm('Clear all WorkPulse records for this profile? This cannot be undone.')) {
+      return;
+    }
 
     if (isGuest) {
       setRecords({});
@@ -1612,6 +2046,24 @@ export default function App() {
     setShowOnboarding(false);
   }
 
+  function toggleTheme() {
+    setTheme((current) => (current === 'dark' ? 'light' : 'dark'));
+  }
+
+  function navigateView(nextView) {
+    if (DETAIL_VIEWS.has(nextView)) {
+      setReturnView(DETAIL_VIEWS.has(activeView) ? returnView : activeView);
+    } else {
+      setReturnView(nextView);
+    }
+
+    setActiveView(nextView);
+  }
+
+  function closeDetailView() {
+    setActiveView(returnView || 'home');
+  }
+
   if (showSplash) {
     return (
       <main className="page">
@@ -1667,8 +2119,11 @@ export default function App() {
       >
         <AppHeader
           activeView={activeView}
+          onBack={closeDetailView}
           now={today}
-          setActiveView={setActiveView}
+          setActiveView={navigateView}
+          theme={theme}
+          toggleTheme={toggleTheme}
           user={user}
         />
 
@@ -1679,12 +2134,14 @@ export default function App() {
               activeSession={activeSession}
               breakMs={breakMs}
               completedMs={completedMs}
+              dashboardOrder={dashboardOrder}
               distanceMeters={distanceMeters}
               liveLocation={liveLocation}
               onBreak={onBreak}
               punchIn={requestPunchIn}
               punchOut={punchOut}
-              setActiveView={setActiveView}
+              setActiveView={navigateView}
+              setDashboardOrder={setDashboardOrder}
               todayRecord={todayRecord}
               totalMs={totalMs}
               user={user}
@@ -1693,14 +2150,19 @@ export default function App() {
           ) : null}
           {activeView === 'timeline' ? <TimelineScreen records={records} today={today} todayRecord={todayRecord} /> : null}
           {activeView === 'reports' ? <ReportsScreen records={records} today={today} /> : null}
-          {activeView === 'profile' ? <ProfileScreen clearAll={clearAll} logout={logout} setActiveView={setActiveView} user={user} /> : null}
+          {activeView === 'profile' ? <ProfileScreen clearAll={clearAll} logout={logout} setActiveView={navigateView} user={user} /> : null}
           {activeView === 'notifications' ? <NotificationsScreen /> : null}
           {activeView === 'notes' ? <NotesScreen record={todayRecord} saveNotes={saveNotes} /> : null}
           {activeView === 'location' ? <LocationScreen saveLocation={saveLocation} user={user} /> : null}
           {activeView === 'manual' ? <ManualTimeScreen dateKey={dateKey} saveManualSession={saveManualSession} /> : null}
+          {activeView === 'personal' ? <PersonalInformationScreen user={user} /> : null}
+          {activeView === 'schedule' ? <WorkScheduleScreen /> : null}
+          {activeView === 'privacy' ? <DataPrivacyScreen clearAll={clearAll} isGuest={isGuest} /> : null}
+          {activeView === 'export' ? <ExportDataScreen records={records} user={user} /> : null}
+          {activeView === 'support' ? <HelpSupportScreen /> : null}
         </section>
 
-        <BottomNav activeView={activeView} setActiveView={setActiveView} />
+        <BottomNav activeView={activeView} setActiveView={navigateView} />
         {breakPrompt ? <BreakPrompt gapMs={breakPrompt.gapMs} onAnswer={answerBreakPrompt} /> : null}
         {arrivalPrompt && !breakPrompt ? (
           <ArrivalPrompt
