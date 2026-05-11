@@ -29,11 +29,11 @@ const TOKEN_KEY = 'workpulse-auth-token';
 const GUEST_KEY = 'workpulse-guest-session';
 const GUEST_RECORDS_KEY = 'workpulse-guest-records';
 const GUEST_USER_KEY = 'workpulse-guest-user';
-const SPLASH_KEY = 'workpulse-splash-v2-seen';
-const ONBOARDING_KEY = 'workpulse-onboarding-done';
+const ONBOARDING_KEY = 'workpulse-onboarding-v2-done';
 const TARGET_MS = 8 * 60 * 60 * 1000;
 const WORKPLACE_RADIUS_METERS = 150;
 const WORKPLACE = 'Technopark Phase 1';
+const DETAIL_VIEWS = new Set(['notifications', 'notes', 'location', 'manual']);
 
 const focusTags = ['Development', 'Design', 'Meeting', 'Testing', 'Research', 'Other'];
 
@@ -141,10 +141,18 @@ function getWeekDays(date) {
 
 function normalizeRecord(record) {
   return {
-    sessions: record?.sessions ?? [],
+    sessions: [...(record?.sessions ?? [])].sort((a, b) => Number(a.in) - Number(b.in)),
     notes: record?.notes ?? '',
     focus: record?.focus ?? [],
   };
+}
+
+function hasSessionOverlap(sessions, inTime, outTime) {
+  return sessions.some((session) => {
+    const start = Number(session.in);
+    const end = session.out ? Number(session.out) : Number.POSITIVE_INFINITY;
+    return Number.isFinite(start) && inTime < end && outTime > start;
+  });
 }
 
 function getTodayRecord(records, dateKey) {
@@ -196,6 +204,12 @@ function formatDistance(meters) {
   return `${(meters / 1000).toFixed(1)} km away`;
 }
 
+function parseLocalDateTime(date, time) {
+  const value = new Date(`${date}T${time}`);
+  const timestamp = value.getTime();
+  return Number.isFinite(timestamp) ? timestamp : null;
+}
+
 function getGreeting(date) {
   const hour = date.getHours();
   if (hour < 12) return 'Good Morning';
@@ -242,8 +256,8 @@ function WorkPulseLogo({ compact = false }) {
   );
 }
 
-function AppHeader({ activeSession, activeView, onPunchIn, onPunchOut, now, setActiveView, user }) {
-  const isBackView = ['notifications', 'notes', 'location'].includes(activeView);
+function AppHeader({ activeView, now, setActiveView, user }) {
+  const isBackView = DETAIL_VIEWS.has(activeView);
 
   return (
     <header className="app-header">
@@ -266,12 +280,10 @@ function AppHeader({ activeSession, activeView, onPunchIn, onPunchOut, now, setA
       {activeView === 'notifications' ? <h2>Notifications</h2> : null}
       {activeView === 'notes' ? <h2>Work Notes</h2> : null}
       {activeView === 'location' ? <h2>Location</h2> : null}
+      {activeView === 'manual' ? <h2>Add Time</h2> : null}
 
       {!isBackView ? (
         <div className="header-actions">
-          <button className={activeSession ? 'top-punch-target danger' : 'top-punch-target'} onClick={activeSession ? onPunchOut : onPunchIn} type="button">
-            {activeSession ? 'Punch Out' : 'Punch In'}
-          </button>
           <button className="header-icon has-dot" onClick={() => setActiveView('notifications')} type="button">
             <Bell size={18} />
           </button>
@@ -337,6 +349,9 @@ function HomeScreen({ activeSession, breakMs, completedMs, distanceMeters, liveL
           <strong>{formatTimer(totalMs)}</strong>
           <p>Working since {formatClock(activeSession.in)}</p>
           <small>On track</small>
+          <button className="ready-punch-button danger" onClick={punchOut} type="button">
+            Punch Out
+          </button>
         </section>
       ) : (
         <section className="empty-clock-card">
@@ -380,24 +395,20 @@ function HomeScreen({ activeSession, breakMs, completedMs, distanceMeters, liveL
         <MetricCard icon={BarChart3} label="Week" value={formatHours(weeklyMs)} hint="Mon to Sun" />
       </section>
 
-      <div className="punch-actions">
-        <button className="primary-action" disabled={Boolean(activeSession)} onClick={punchIn} type="button">
-          Punch In
-        </button>
-        <button className="primary-action danger" disabled={!activeSession} onClick={punchOut} type="button">
-          Punch Out
-        </button>
-      </div>
-
       <section className="summary-card">
         <div className="section-title">
           <div>
             <span className="eyebrow">Today's summary</span>
             <h2>{formatHours(completedMs)}</h2>
           </div>
-          <button onClick={() => setActiveView('notes')} type="button">
-            Add Note
-          </button>
+          <div className="section-actions">
+            <button onClick={() => setActiveView('manual')} type="button">
+              Add Time
+            </button>
+            <button onClick={() => setActiveView('notes')} type="button">
+              Add Note
+            </button>
+          </div>
         </div>
         <SummaryRow label="Check In" value={todayRecord.sessions[0] ? formatClock(todayRecord.sessions[0].in) : '--'} />
         <SummaryRow label="Check Out" value={lastClosed ? formatClock(lastClosed.out) : '--'} />
@@ -561,6 +572,7 @@ function ProfileScreen({ clearAll, logout, setActiveView, user }) {
   const items = [
     { icon: User, label: 'Personal Information' },
     { icon: MapPin, label: 'Workplace and Location', action: () => setActiveView('location') },
+    { icon: Clock3, label: 'Manual Time Entry', action: () => setActiveView('manual') },
     { icon: Clock3, label: 'Work Schedule', meta: '9:00 AM - 6:00 PM' },
     { icon: Bell, label: 'Notifications', action: () => setActiveView('notifications') },
     { icon: Shield, label: 'Data and Privacy' },
@@ -605,6 +617,98 @@ function ProfileScreen({ clearAll, logout, setActiveView, user }) {
           <span>Log Out</span>
         </button>
       </section>
+    </div>
+  );
+}
+
+function ManualTimeScreen({ dateKey, saveManualSession }) {
+  const [form, setForm] = useState({
+    date: dateKey,
+    inTime: '09:00',
+    outTime: '18:00',
+  });
+  const [error, setError] = useState('');
+  const [status, setStatus] = useState('');
+  const inAt = parseLocalDateTime(form.date, form.inTime);
+  const outAt = parseLocalDateTime(form.date, form.outTime);
+  const previewMs = inAt && outAt && outAt > inAt ? outAt - inAt : 0;
+
+  function updateField(field, value) {
+    setForm((current) => ({ ...current, [field]: value }));
+    setError('');
+    setStatus('');
+  }
+
+  async function submit(event) {
+    event.preventDefault();
+    const result = await saveManualSession(form);
+
+    if (!result.ok) {
+      setError(result.message);
+      return;
+    }
+
+    setStatus('Manual time added to your records');
+    setForm((current) => ({
+      ...current,
+      inTime: '',
+      outTime: '',
+    }));
+  }
+
+  return (
+    <div className="manual-screen">
+      <section className="manual-card">
+        <div className="manual-icon">
+          <Clock3 size={34} />
+        </div>
+        <h2>Forgot to punch?</h2>
+        <p>Add a completed punch-in and punch-out time. It will update your daily total, weekly total, timeline, and reports.</p>
+      </section>
+
+      <form className="manual-form" onSubmit={submit}>
+        <label className="manual-field">
+          <span>Date</span>
+          <input
+            max={dateKey}
+            onChange={(event) => updateField('date', event.target.value)}
+            type="date"
+            value={form.date}
+          />
+        </label>
+
+        <div className="manual-time-grid">
+          <label className="manual-field">
+            <span>Punch In</span>
+            <input
+              onChange={(event) => updateField('inTime', event.target.value)}
+              type="time"
+              value={form.inTime}
+            />
+          </label>
+          <label className="manual-field">
+            <span>Punch Out</span>
+            <input
+              onChange={(event) => updateField('outTime', event.target.value)}
+              type="time"
+              value={form.outTime}
+            />
+          </label>
+        </div>
+
+        <section className="manual-preview">
+          <SummaryRow label="Manual Hours" value={previewMs ? formatHours(previewMs) : '--'} />
+          <SummaryRow label="Entry Type" value="Completed session" />
+        </section>
+
+        {error ? <p className="form-error">{error}</p> : null}
+        {status ? <p className="location-status success">{status}</p> : null}
+
+        <button className="primary-action" type="submit">
+          <Save size={18} />
+          Save Manual Time
+        </button>
+      </form>
     </div>
   );
 }
@@ -775,6 +879,9 @@ function AuthScreen({ error, loading, mode, onGuest, onSubmit, setMode }) {
     email: '',
     password: '',
   });
+  const [guestName, setGuestName] = useState('');
+  const [guestNameError, setGuestNameError] = useState('');
+  const [guestNameOpen, setGuestNameOpen] = useState(false);
   const isSignup = mode === 'signup';
 
   function updateField(field, value) {
@@ -784,6 +891,22 @@ function AuthScreen({ error, loading, mode, onGuest, onSubmit, setMode }) {
   function submit(event) {
     event.preventDefault();
     onSubmit(form);
+  }
+
+  function startGuest() {
+    if (!guestNameOpen) {
+      setGuestNameOpen(true);
+      setGuestNameError('');
+      return;
+    }
+
+    const cleanName = guestName.trim();
+    if (!cleanName) {
+      setGuestNameError('Enter your name to continue as guest');
+      return;
+    }
+
+    onGuest(cleanName);
   }
 
   return (
@@ -858,21 +981,49 @@ function AuthScreen({ error, loading, mode, onGuest, onSubmit, setMode }) {
 
       <div className="guest-entry">
         <span>or continue without an account</span>
-        <button onClick={onGuest} type="button">
-          Continue as Guest
+        {guestNameOpen ? (
+          <label className="guest-name-field">
+            <User size={17} />
+            <input
+              autoComplete="name"
+              autoFocus
+              onChange={(event) => {
+                setGuestName(event.target.value);
+                setGuestNameError('');
+              }}
+              placeholder="Your name"
+              value={guestName}
+            />
+          </label>
+        ) : null}
+        {guestNameError ? <p className="form-error">{guestNameError}</p> : null}
+        <button onClick={startGuest} type="button">
+          {guestNameOpen ? 'Start Guest Mode' : 'Continue as Guest'}
         </button>
       </div>
     </main>
   );
 }
 
-function SplashScreen({ onStart }) {
+function SplashScreen() {
   return (
     <main className="splash-screen">
-      <WorkPulseLogo />
-      <h1>WorkPulse</h1>
-      <p>Track your time. Stay productive.</p>
-      <button onClick={onStart} type="button">Get Started</button>
+      <section className="splash-visual" aria-hidden="true">
+        <WorkPulseLogo />
+        <div className="splash-preview-card">
+          <span>Today</span>
+          <strong>08:00</strong>
+          <small>Work target</small>
+        </div>
+      </section>
+      <section className="splash-copy">
+        <h1>WorkPulse</h1>
+        <p>Track your time. Stay productive.</p>
+        <div className="splash-loader">
+          <span />
+          Opening app
+        </div>
+      </section>
     </main>
   );
 }
@@ -997,6 +1148,13 @@ function BottomNav({ activeView, setActiveView }) {
 
   return (
     <nav className="bottom-nav" aria-label="Main navigation">
+      <div className="nav-brand">
+        <WorkPulseLogo compact />
+        <div>
+          <strong>WorkPulse</strong>
+          <span>Time dashboard</span>
+        </div>
+      </div>
       {items.map((item) => {
         const Icon = item.icon;
         return (
@@ -1018,7 +1176,7 @@ export default function App() {
   const [user, setUser] = useState(() => (storedGuest ? readGuestUser() : null));
   const [now, setNow] = useState(Date.now());
   const [activeView, setActiveView] = useState('home');
-  const [showSplash, setShowSplash] = useState(() => localStorage.getItem(SPLASH_KEY) !== 'true');
+  const [showSplash, setShowSplash] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(() => localStorage.getItem(ONBOARDING_KEY) !== 'true');
   const [authMode, setAuthMode] = useState('login');
   const [authError, setAuthError] = useState('');
@@ -1034,6 +1192,11 @@ export default function App() {
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setShowSplash(false), 1300);
+    return () => window.clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -1164,7 +1327,6 @@ export default function App() {
         body: form,
       });
       localStorage.setItem(TOKEN_KEY, data.token);
-      localStorage.setItem(SPLASH_KEY, 'true');
       localStorage.setItem(ONBOARDING_KEY, 'true');
       localStorage.removeItem(GUEST_KEY);
       setToken(data.token);
@@ -1181,11 +1343,14 @@ export default function App() {
     }
   }
 
-  function startGuestMode() {
-    const guestUser = readGuestUser();
+  function startGuestMode(name) {
+    const guestUser = {
+      ...readGuestUser(),
+      name: name.trim(),
+    };
     localStorage.setItem(GUEST_KEY, 'true');
-    localStorage.setItem(SPLASH_KEY, 'true');
     localStorage.setItem(ONBOARDING_KEY, 'true');
+    localStorage.setItem(GUEST_USER_KEY, JSON.stringify(guestUser));
     localStorage.removeItem(TOKEN_KEY);
     setIsGuest(true);
     setToken('');
@@ -1301,6 +1466,61 @@ export default function App() {
     await punchIn(isBreak ? 'break' : 'checkout');
   }
 
+  async function saveManualSession({ date, inTime, outTime }) {
+    setActionError('');
+    const cleanDate = String(date ?? '').trim();
+    const inAt = parseLocalDateTime(cleanDate, inTime);
+    const outAt = parseLocalDateTime(cleanDate, outTime);
+
+    if (!cleanDate || !inTime || !outTime || inAt === null || outAt === null) {
+      return { ok: false, message: 'Choose a date, punch in time, and punch out time' };
+    }
+
+    if (cleanDate > dateKey) {
+      return { ok: false, message: 'Manual time cannot be added for a future date' };
+    }
+
+    if (outAt <= inAt) {
+      return { ok: false, message: 'Punch out must be after punch in' };
+    }
+
+    if (isGuest) {
+      const record = getTodayRecord(records, cleanDate);
+
+      if (hasSessionOverlap(record.sessions, inAt, outAt)) {
+        return { ok: false, message: 'Manual time overlaps an existing session' };
+      }
+
+      setRecords((current) => {
+        const currentRecord = getTodayRecord(current, cleanDate);
+        return {
+          ...current,
+          [cleanDate]: {
+            ...currentRecord,
+            sessions: [
+              ...currentRecord.sessions,
+              { in: inAt, out: outAt, outReason: 'checkout', manual: true },
+            ].sort((a, b) => Number(a.in) - Number(b.in)),
+          },
+        };
+      });
+      return { ok: true };
+    }
+
+    try {
+      const data = await apiRequest(`/api/records/${encodeURIComponent(cleanDate)}/sessions`, {
+        method: 'POST',
+        token,
+        body: { in: inAt, out: outAt },
+      });
+      setRecords(data.records ?? {});
+      return { ok: true };
+    } catch (error) {
+      setActionError(error.message);
+      return { ok: false, message: error.message };
+    }
+  }
+
   async function saveNotes(notes, focus) {
     setActionError('');
 
@@ -1384,11 +1604,6 @@ export default function App() {
     setActiveView('home');
   }
 
-  function startApp() {
-    localStorage.setItem(SPLASH_KEY, 'true');
-    setShowSplash(false);
-  }
-
   function finishOnboarding() {
     localStorage.setItem(ONBOARDING_KEY, 'true');
     setShowOnboarding(false);
@@ -1398,7 +1613,7 @@ export default function App() {
     return (
       <main className="page">
         <section className="phone-shell intro-shell">
-          <SplashScreen onStart={startApp} />
+          <SplashScreen />
         </section>
       </main>
     );
@@ -1444,15 +1659,12 @@ export default function App() {
   return (
     <main className="page">
       <section
-        className={`phone-shell app-shell ${['notifications', 'notes', 'location'].includes(activeView) ? 'detail-shell' : ''}`}
+        className={`phone-shell app-shell ${DETAIL_VIEWS.has(activeView) ? 'detail-shell' : ''}`}
         aria-label="WorkPulse employee time tracker"
       >
         <AppHeader
-          activeSession={activeSession}
           activeView={activeView}
           now={today}
-          onPunchIn={requestPunchIn}
-          onPunchOut={punchOut}
           setActiveView={setActiveView}
           user={user}
         />
@@ -1483,11 +1695,10 @@ export default function App() {
           {activeView === 'notifications' ? <NotificationsScreen /> : null}
           {activeView === 'notes' ? <NotesScreen record={todayRecord} saveNotes={saveNotes} /> : null}
           {activeView === 'location' ? <LocationScreen saveLocation={saveLocation} user={user} /> : null}
+          {activeView === 'manual' ? <ManualTimeScreen dateKey={dateKey} saveManualSession={saveManualSession} /> : null}
         </section>
 
-        {!['notifications', 'notes', 'location'].includes(activeView) ? (
-          <BottomNav activeView={activeView} setActiveView={setActiveView} />
-        ) : null}
+        <BottomNav activeView={activeView} setActiveView={setActiveView} />
         {breakPrompt ? <BreakPrompt gapMs={breakPrompt.gapMs} onAnswer={answerBreakPrompt} /> : null}
         {arrivalPrompt && !breakPrompt ? (
           <ArrivalPrompt

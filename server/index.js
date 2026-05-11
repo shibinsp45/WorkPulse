@@ -57,12 +57,24 @@ function todayKey() {
   return `${now.getFullYear()}-${month}-${day}`;
 }
 
+function sortSessions(sessions) {
+  return [...sessions].sort((a, b) => Number(a.in) - Number(b.in));
+}
+
 function normalizeRecord(record) {
   return {
-    sessions: record?.sessions ?? [],
+    sessions: sortSessions(record?.sessions ?? []),
     notes: record?.notes ?? '',
     focus: record?.focus ?? [],
   };
+}
+
+function hasSessionOverlap(sessions, inTime, outTime) {
+  return sessions.some((session) => {
+    const start = Number(session.in);
+    const end = session.out ? Number(session.out) : Number.POSITIVE_INFINITY;
+    return Number.isFinite(start) && inTime < end && outTime > start;
+  });
 }
 
 function findUser(store, userId) {
@@ -226,6 +238,41 @@ app.post('/api/punch/out', requireAuth, async (request, response) => {
     out: time,
     outReason: reason,
   };
+  user.records = { ...(user.records ?? {}), [date]: record };
+  updateUser(request.store, user);
+  await writeStore(request.store);
+
+  response.json({ records: user.records, record });
+});
+
+app.post('/api/records/:date/sessions', requireAuth, async (request, response) => {
+  const date = String(request.params.date ?? todayKey());
+  const inTime = Number(request.body.in);
+  const outTime = Number(request.body.out);
+  const user = request.user;
+  const record = normalizeRecord(user.records?.[date]);
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return response.status(400).json({ message: 'Choose a valid date' });
+  }
+
+  if (!Number.isFinite(inTime) || !Number.isFinite(outTime) || outTime <= inTime) {
+    return response.status(400).json({ message: 'Punch out must be after punch in' });
+  }
+
+  if (hasSessionOverlap(record.sessions, inTime, outTime)) {
+    return response.status(409).json({ message: 'Manual time overlaps an existing session' });
+  }
+
+  record.sessions = sortSessions([
+    ...record.sessions,
+    {
+      in: inTime,
+      out: outTime,
+      outReason: 'checkout',
+      manual: true,
+    },
+  ]);
   user.records = { ...(user.records ?? {}), [date]: record };
   updateUser(request.store, user);
   await writeStore(request.store);
