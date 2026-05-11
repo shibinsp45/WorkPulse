@@ -493,7 +493,6 @@ function HomeScreen({ activeSession, breakMs, completedMs, dashboardOrder, dista
         <button className="ready-punch-button" onClick={punchIn} type="button">
           Punch In
         </button>
-        <ManualTimeShortcut compact setActiveView={setActiveView} />
       </section>
     ),
     progress: (
