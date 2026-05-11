@@ -511,7 +511,7 @@ button:disabled {
 .compact-header-bottom {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 12px;
 }
 
@@ -666,9 +666,46 @@ button:disabled {
   gap: 14px;
 }
 
+.home-panel {
+  position: relative;
+  min-width: 0;
+}
+
+.home-panel > * {
+  height: 100%;
+}
+
+.home-panel.dragging {
+  opacity: 0.78;
+}
+
+.home-panel.drop-target > * {
+  outline: 2px dashed rgba(85, 72, 244, 0.35);
+  outline-offset: 4px;
+}
+
+.panel-drag-handle {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+  display: inline-grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #98a2b3;
+  box-shadow: 0 10px 22px rgba(17, 24, 39, 0.08);
+  pointer-events: none;
+}
+
 .glass-card,
 .target-card,
 .summary-card,
+.progress-overview-card,
+.notes-todo-card,
+.manual-entry-card,
 .timeline-card,
 .history-card,
 .insight-card,
@@ -741,6 +778,18 @@ button:disabled {
 
 .empty-clock-card h3 {
   font-size: 16px;
+}
+
+.empty-clock-card strong {
+  font-size: 34px;
+  letter-spacing: 0.08em;
+}
+
+.idle-timer-copy {
+  margin-top: -2px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .empty-clock-card p {
@@ -1058,6 +1107,9 @@ button:disabled {
 }
 
 .summary-card,
+.progress-overview-card,
+.notes-todo-card,
+.manual-entry-card,
 .history-card,
 .insight-card,
 .chart-card,
@@ -1124,6 +1176,104 @@ button:disabled {
 
 .summary-row .positive {
   color: var(--green);
+}
+
+.progress-overview-card {
+  display: grid;
+  gap: 16px;
+}
+
+.progress-overview-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.progress-overview-top strong {
+  display: block;
+  margin: 6px 0 2px;
+  font-size: 28px;
+}
+
+.progress-overview-top p {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.progress-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 14px;
+}
+
+.progress-summary-grid .summary-row {
+  min-width: 0;
+}
+
+.notes-todo-card,
+.manual-entry-card {
+  display: grid;
+  gap: 16px;
+}
+
+.note-preview {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 14px;
+}
+
+.note-preview p {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.todo-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.todo-tags span {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  border-radius: 999px;
+  background: #f1f0ff;
+  padding: 0 12px;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.notes-open-action {
+  width: 100%;
+}
+
+.manual-entry-icon {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  border-radius: 16px;
+  color: var(--primary);
+  background: #f1f0ff;
+}
+
+.manual-entry-card h2 {
+  font-size: 22px;
+}
+
+.manual-entry-card p {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.manual-entry-stats .metric-card {
+  min-height: 0;
 }
 
 .date-strip {
@@ -2658,41 +2808,32 @@ button:disabled {
   }
 
   .app-shell .home-stack {
-    grid-template-columns: 1.3fr 1.3fr 1fr;
-    grid-template-areas:
-      "hero workplace target"
-      "summary summary metrics";
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: start;
     gap: 18px;
   }
 
-  .app-shell .home-stack .live-card,
-  .app-shell .home-stack .empty-clock-card {
-    grid-area: hero;
-    min-height: 300px;
-    align-content: center;
-  }
-
-  .app-shell .home-stack .workplace-card {
-    grid-area: workplace;
-    min-height: 0;
-    align-self: start;
-  }
-
-  .app-shell .home-stack .target-card {
-    grid-area: target;
+  .app-shell .home-stack .home-panel.panel-hero,
+  .app-shell .home-stack .home-panel.panel-progress {
     min-height: 300px;
   }
 
-  .app-shell .home-stack .quick-grid {
-    grid-area: metrics;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-self: stretch;
-  }
-
-  .app-shell .home-stack .summary-card {
-    grid-area: summary;
+  .app-shell .home-stack .home-panel.panel-notes,
+  .app-shell .home-stack .home-panel.panel-manual {
     min-height: 240px;
+  }
+
+  .app-shell .home-stack .home-panel.panel-hero {
+    grid-column: span 1;
+  }
+
+  .app-shell .home-stack .home-panel.panel-progress {
+    grid-column: span 1;
+  }
+
+  .app-shell .home-stack .home-panel.panel-notes,
+  .app-shell .home-stack .home-panel.panel-manual {
+    grid-column: span 1;
   }
 
   .app-shell .screen-stack:not(.home-stack),
@@ -2706,6 +2847,38 @@ button:disabled {
     width: min(920px, 100%);
     max-width: 920px;
     margin: 0 auto;
+  }
+
+  .app-shell .manual-screen,
+  .app-shell .location-screen,
+  .app-shell .notes-screen,
+  .app-shell .detail-screen {
+    width: min(920px, 100%);
+    max-width: 920px;
+    margin: 0 auto;
+  }
+
+  .app-shell .detail-screen {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .app-shell .detail-screen > :only-child,
+  .app-shell .danger-card {
+    grid-column: 1 / -1;
+  }
+
+  .app-shell .manual-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .app-shell .manual-form > .manual-field,
+  .app-shell .manual-form > .manual-time-grid,
+  .app-shell .manual-preview,
+  .app-shell .manual-alert,
+  .app-shell .manual-form > .location-status,
+  .app-shell .manual-form > .primary-action {
+    grid-column: 1 / -1;
   }
 
   .app-shell .profile-screen .settings-list {
@@ -2791,24 +2964,17 @@ button:disabled {
 
   .app-shell .home-stack {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-template-areas: none;
   }
 
-  .app-shell .home-stack .live-card,
-  .app-shell .home-stack .empty-clock-card,
-  .app-shell .home-stack .workplace-card,
-  .app-shell .home-stack .target-card {
+  .app-shell .home-stack .home-panel.panel-hero,
+  .app-shell .home-stack .home-panel.panel-progress {
     grid-column: span 1;
-    min-height: 170px;
+    min-height: 240px;
   }
 
-  .app-shell .home-stack .quick-grid {
-    grid-column: 1 / -1;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .app-shell .home-stack .summary-card {
-    grid-column: 1 / -1;
+  .app-shell .home-stack .home-panel.panel-notes,
+  .app-shell .home-stack .home-panel.panel-manual {
+    grid-column: span 1;
   }
 
   .app-shell .reports-grid {
@@ -2856,17 +3022,8 @@ button:disabled {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .home-stack .live-card,
-  .home-stack .empty-clock-card,
-  .home-stack .workplace-card,
-  .home-stack .target-card,
-  .home-stack .quick-grid,
-  .home-stack .summary-card {
+  .home-stack .home-panel {
     grid-column: 1 / -1;
-  }
-
-  .quick-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .notes-screen,

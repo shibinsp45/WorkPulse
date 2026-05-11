@@ -40,7 +40,7 @@ const TARGET_MS = 8 * 60 * 60 * 1000;
 const WORKPLACE_RADIUS_METERS = 150;
 const WORKPLACE = 'Technopark Phase 1';
 const DETAIL_VIEWS = new Set(['notifications', 'notes', 'location', 'manual', 'personal', 'schedule', 'privacy', 'export', 'support']);
-const DASHBOARD_SECTIONS = ['hero', 'target', 'summary', 'metrics'];
+const DASHBOARD_SECTIONS = ['hero', 'progress', 'notes', 'manual'];
 const VIEW_TITLES = {
   home: 'Home',
   timeline: 'Timeline',
@@ -448,6 +448,7 @@ function HomeScreen({ activeSession, breakMs, completedMs, dashboardOrder, dista
   const remainingMs = Math.max(0, TARGET_MS - totalMs);
   const overtimeMs = Math.max(0, totalMs - TARGET_MS);
   const lastClosed = todayRecord.sessions.filter((session) => session.out && session.outReason !== 'break').at(-1);
+  const notePreview = todayRecord.notes?.trim();
   const [dragId, setDragId] = useState('');
   const [dropId, setDropId] = useState('');
 
@@ -485,6 +486,8 @@ function HomeScreen({ activeSession, breakMs, completedMs, dashboardOrder, dista
         <div className="clock-illustration">
           <Timer size={46} />
         </div>
+        <strong>{formatTimer(totalMs)}</strong>
+        <small className="idle-timer-copy">{lastClosed ? 'Tracked today' : 'Timer ready'}</small>
         <h3>{onBreak ? 'Break in progress' : lastClosed ? 'You are checked out' : 'Ready to start'}</h3>
         <p>{onBreak ? 'Punch in when you are back. We will count the gap as break time.' : lastClosed ? 'Punch in again to continue your hours.' : 'Tap punch in to start tracking your work hours.'}</p>
         <button className="ready-punch-button" onClick={punchIn} type="button">
@@ -493,46 +496,74 @@ function HomeScreen({ activeSession, breakMs, completedMs, dashboardOrder, dista
         <ManualTimeShortcut compact setActiveView={setActiveView} />
       </section>
     ),
-    target: (
-      <section className="target-card">
-        <span className="eyebrow">Today target</span>
-        <div>
-          <strong>8h 00m</strong>
-          <p>Standard work hours</p>
+    progress: (
+      <section className="progress-overview-card">
+        <div className="progress-overview-top">
+          <div>
+            <span className="eyebrow">Today's target</span>
+            <strong>8h 00m</strong>
+            <p>Standard work hours</p>
+          </div>
+          <div className="progress-ring" style={{ '--progress': `${Math.min(100, (totalMs / TARGET_MS) * 100)}%` }}>
+            <span>{Math.min(100, Math.floor((totalMs / TARGET_MS) * 100))}%</span>
+          </div>
         </div>
-        <div className="progress-ring" style={{ '--progress': `${Math.min(100, (totalMs / TARGET_MS) * 100)}%` }}>
-          <span>{Math.min(100, Math.floor((totalMs / TARGET_MS) * 100))}%</span>
+        <div className="progress-summary-grid">
+          <SummaryRow label="Worked" value={formatHours(completedMs)} />
+          <SummaryRow label="Remaining" value={formatHours(remainingMs)} />
+          <SummaryRow label="Break" value={formatHours(breakMs)} />
+          <SummaryRow label="Overtime" value={formatHours(overtimeMs)} positive />
+          <SummaryRow label="Check In" value={todayRecord.sessions[0] ? formatClock(todayRecord.sessions[0].in) : '--'} />
+          <SummaryRow label="Check Out" value={lastClosed ? formatClock(lastClosed.out) : '--'} />
+        </div>
+        <div className="section-actions">
+          <button onClick={() => setActiveView('manual')} type="button">
+            Missing Punches
+          </button>
+          <button onClick={() => setActiveView('notes')} type="button">
+            Add Note
+          </button>
         </div>
       </section>
     ),
-    summary: (
-      <section className="summary-card">
+    notes: (
+      <section className="notes-todo-card">
         <div className="section-title">
           <div>
-            <span className="eyebrow">Today's summary</span>
-            <h2>{formatHours(completedMs)}</h2>
-          </div>
-          <div className="section-actions">
-            <button onClick={() => setActiveView('manual')} type="button">
-              Add Time
-            </button>
-            <button onClick={() => setActiveView('notes')} type="button">
-              Add Note
-            </button>
+            <span className="eyebrow">Notes and To-Do</span>
+            <h2>{notePreview ? 'Today plan' : 'Add your work notes'}</h2>
           </div>
         </div>
-        <SummaryRow label="Check In" value={todayRecord.sessions[0] ? formatClock(todayRecord.sessions[0].in) : '--'} />
-        <SummaryRow label="Check Out" value={lastClosed ? formatClock(lastClosed.out) : '--'} />
-        <SummaryRow label="Break Time" value={formatHours(breakMs)} />
-        <SummaryRow label="Overtime" value={formatHours(overtimeMs)} positive />
+        <div className="note-preview">
+          <p>{notePreview || 'Capture your priorities, meetings, or follow-ups so the day feels easier to track.'}</p>
+        </div>
+        <div className="todo-tags">
+          {(todayRecord.focus?.length ? todayRecord.focus : ['No focus tags yet']).map((item) => (
+            <span key={item}>{item}</span>
+          ))}
+        </div>
+        <button className="secondary-action notes-open-action" onClick={() => setActiveView('notes')} type="button">
+          Open Notes
+        </button>
       </section>
     ),
-    metrics: (
-      <section className="quick-grid">
-        <MetricCard icon={Clock3} label="Worked" value={formatHours(totalMs)} hint="Today" />
-        <MetricCard icon={Timer} label="Remaining" value={formatHours(remainingMs)} hint="Target left" />
-        <MetricCard icon={Coffee} label="Break" value={formatHours(breakMs)} hint="Away time" />
-        <MetricCard icon={BarChart3} label="Week" value={formatHours(weeklyMs)} hint="Mon to Sun" />
+    manual: (
+      <section className="manual-entry-card">
+        <div className="manual-entry-icon">
+          <Clock3 size={22} />
+        </div>
+        <div>
+          <span className="eyebrow">Manual time</span>
+          <h2>Add missed punches</h2>
+          <p>Forgot to punch in or out? Add the completed time later without leaving your dashboard flow.</p>
+        </div>
+        <div className="manual-entry-stats">
+          <MetricCard icon={BarChart3} label="Week" value={formatHours(weeklyMs)} hint="Mon to Sun" />
+        </div>
+        <button className="primary-action" onClick={() => setActiveView('manual')} type="button">
+          <Plus size={18} />
+          Add Manual Time
+        </button>
       </section>
     ),
   };
