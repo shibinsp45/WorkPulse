@@ -462,6 +462,11 @@ button {
   min-width: 0;
 }
 
+.header-copy {
+  display: grid;
+  gap: 9px;
+}
+
 .app-header p {
   margin-bottom: 2px;
   font-size: 14px;
@@ -491,7 +496,6 @@ button {
   width: fit-content;
   align-items: center;
   gap: 5px;
-  margin-top: 8px;
   border-radius: 999px;
   background: #fff;
   padding: 7px 10px;
@@ -563,11 +567,6 @@ button {
   padding: 9px 13px;
   font-size: 12px;
   font-weight: 900;
-}
-
-.checked-out {
-  color: var(--red);
-  background: #fff0ef;
 }
 
 .checked-in {
@@ -667,6 +666,7 @@ button {
 .ready-punch-button {
   width: min(240px, 100%);
   min-height: 48px;
+  justify-self: center;
   margin-top: 4px;
   border-radius: 14px;
   color: #fff;
@@ -681,11 +681,24 @@ button {
 }
 
 .workplace-card {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+}
+
+.workplace-main {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  padding: 16px;
+}
+
+.workplace-live {
+  display: grid;
+  align-items: start;
+  border-radius: 14px;
+  background: #f8f8ff;
+  padding: 12px;
 }
 
 .workplace-card h3 {
@@ -694,9 +707,41 @@ button {
 }
 
 .workplace-card p {
-  color: var(--green);
   font-size: 11px;
   font-weight: 800;
+  line-height: 1.4;
+}
+
+.workplace-main p {
+  color: var(--green);
+}
+
+.workplace-live strong {
+  display: block;
+  margin: 4px 0 3px;
+  font-size: 15px;
+  line-height: 1.25;
+}
+
+.workplace-live p {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.location-inline-action {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 8px;
+  border-radius: 12px;
+  background: #fff;
+  padding: 0 14px;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 900;
+  box-shadow: 0 8px 18px rgba(17, 24, 39, 0.06);
 }
 
 .pin-button {
@@ -708,38 +753,6 @@ button {
   border-radius: 16px;
   color: var(--primary);
   background: var(--soft-blue);
-}
-
-.location-status-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  border: 1px solid rgba(85, 72, 244, 0.12);
-  border-radius: 14px;
-  background: #fff;
-  padding: 14px 16px;
-  box-shadow: 0 10px 24px rgba(17, 24, 39, 0.06);
-}
-
-.location-status-card div {
-  display: grid;
-  gap: 4px;
-}
-
-.location-status-card strong {
-  font-size: 15px;
-}
-
-.location-status-card p {
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.4;
-}
-
-.location-status-card svg {
-  flex: 0 0 auto;
-  color: var(--primary);
 }
 
 .target-card {
@@ -1948,19 +1961,14 @@ button {
   }
 
   .app-shell .home-stack .quick-grid {
-    grid-column: span 8;
+    grid-column: 1 / -1;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    order: 5;
-  }
-
-  .app-shell .home-stack .summary-card {
-    grid-column: span 4;
     order: 6;
   }
 
-  .app-shell .home-stack .location-status-card {
+  .app-shell .home-stack .summary-card {
     grid-column: 1 / -1;
-    order: 7;
+    order: 5;
   }
 
   .app-shell .screen-stack:not(.home-stack),
@@ -2024,8 +2032,7 @@ button {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .app-shell .home-stack .summary-card,
-  .app-shell .home-stack .location-status-card {
+  .app-shell .home-stack .summary-card {
     grid-column: 1 / -1;
   }
 }
@@ -2063,7 +2070,6 @@ button {
   .home-stack .live-card,
   .home-stack .empty-clock-card,
   .home-stack .workplace-card,
-  .home-stack .location-status-card,
   .home-stack .target-card,
   .home-stack .quick-grid,
   .home-stack .summary-card {

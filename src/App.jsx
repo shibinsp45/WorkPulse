@@ -266,13 +266,15 @@ function AppHeader({ activeView, now, setActiveView, user }) {
           <ArrowLeft size={18} />
         </button>
       ) : (
-        <div>
-          <p>{getGreeting(now)},</p>
-          <h1>{user?.name ?? 'Employee'}</h1>
-          <span>{formatLongDate(now)}</span>
+        <div className="header-copy">
           <div className="location-chip">
             <MapPin size={13} />
             {user?.workplace ?? WORKPLACE}
+          </div>
+          <div>
+            <p>{getGreeting(now)},</p>
+            <h1>{user?.name ?? 'Employee'}</h1>
+            <span>{formatLongDate(now)}</span>
           </div>
         </div>
       )}
@@ -315,33 +317,49 @@ function WorkplaceCard({ distanceMeters, liveLocation, setActiveView, user }) {
   const locationCopy = hasSavedLocation
     ? `${formatDistance(distanceMeters)} / ${distanceMeters !== null && distanceMeters <= WORKPLACE_RADIUS_METERS ? 'within range' : 'outside range'}`
     : liveLocation
-      ? 'Live location active / save workplace'
-      : 'Live location pending';
+      ? 'Live location active'
+      : 'Allow location';
 
   return (
     <section className="glass-card workplace-card">
-      <div>
-        <span className="eyebrow">Workplace</span>
-        <h3>{user?.workplace ?? WORKPLACE}</h3>
-        <p>{locationCopy}</p>
+      <div className="workplace-main">
+        <div>
+          <span className="eyebrow">Workplace</span>
+          <h3>{user?.workplace ?? WORKPLACE}</h3>
+          <p>{locationCopy}</p>
+        </div>
+        <button className="pin-button" onClick={() => setActiveView('location')} type="button">
+          <MapPin size={20} />
+        </button>
       </div>
-      <button className="pin-button" onClick={() => setActiveView('location')} type="button">
-        <MapPin size={20} />
-      </button>
+      <div className="workplace-live">
+        <div>
+          <span className="eyebrow">Live Location</span>
+          {liveLocation ? (
+            <strong>Live location active</strong>
+          ) : (
+            <button className="location-inline-action" onClick={() => setActiveView('location')} type="button">
+              Allow Location
+            </button>
+          )}
+        </div>
+      </div>
     </section>
   );
 }
 
-function HomeScreen({ activeSession, breakMs, completedMs, distanceMeters, liveLocation, locationError, onBreak, punchIn, punchOut, setActiveView, todayRecord, totalMs, user, weeklyMs }) {
+function HomeScreen({ activeSession, breakMs, completedMs, distanceMeters, liveLocation, onBreak, punchIn, punchOut, setActiveView, todayRecord, totalMs, user, weeklyMs }) {
   const remainingMs = Math.max(0, TARGET_MS - totalMs);
   const overtimeMs = Math.max(0, totalMs - TARGET_MS);
   const lastClosed = todayRecord.sessions.filter((session) => session.out && session.outReason !== 'break').at(-1);
 
   return (
     <div className="screen-stack home-stack">
-      <div className={activeSession ? 'state-pill checked-in' : onBreak ? 'state-pill on-break' : 'state-pill checked-out'}>
-        {activeSession ? 'Checked In' : onBreak ? 'On Break' : 'Checked Out'}
-      </div>
+      {activeSession || onBreak ? (
+        <div className={activeSession ? 'state-pill checked-in' : 'state-pill on-break'}>
+          {activeSession ? 'Checked In' : 'On Break'}
+        </div>
+      ) : null}
 
       {activeSession ? (
         <section className="glass-card live-card">
@@ -368,15 +386,6 @@ function HomeScreen({ activeSession, breakMs, completedMs, distanceMeters, liveL
 
       <WorkplaceCard distanceMeters={distanceMeters} liveLocation={liveLocation} setActiveView={setActiveView} user={user} />
 
-      <section className="location-status-card">
-        <div>
-          <span className="eyebrow">Live Location</span>
-          <strong>{liveLocation ? 'Active' : 'Waiting for permission'}</strong>
-          <p>{locationError || (user?.location ? `Punch prompt triggers within ${WORKPLACE_RADIUS_METERS} m.` : 'Save your workplace location to enable arrival prompts.')}</p>
-        </div>
-        <MapPin size={20} />
-      </section>
-
       <section className="target-card">
         <span className="eyebrow">Today target</span>
         <div>
@@ -386,13 +395,6 @@ function HomeScreen({ activeSession, breakMs, completedMs, distanceMeters, liveL
         <div className="progress-ring" style={{ '--progress': `${Math.min(100, (totalMs / TARGET_MS) * 100)}%` }}>
           <span>{Math.min(100, Math.floor((totalMs / TARGET_MS) * 100))}%</span>
         </div>
-      </section>
-
-      <section className="quick-grid">
-        <MetricCard icon={Clock3} label="Worked" value={formatHours(totalMs)} hint="Today" />
-        <MetricCard icon={Timer} label="Remaining" value={formatHours(remainingMs)} hint="Target left" />
-        <MetricCard icon={Coffee} label="Break" value={formatHours(breakMs)} hint="Away time" />
-        <MetricCard icon={BarChart3} label="Week" value={formatHours(weeklyMs)} hint="Mon to Sun" />
       </section>
 
       <section className="summary-card">
@@ -414,6 +416,13 @@ function HomeScreen({ activeSession, breakMs, completedMs, distanceMeters, liveL
         <SummaryRow label="Check Out" value={lastClosed ? formatClock(lastClosed.out) : '--'} />
         <SummaryRow label="Break Time" value={formatHours(breakMs)} />
         <SummaryRow label="Overtime" value={formatHours(overtimeMs)} positive />
+      </section>
+
+      <section className="quick-grid">
+        <MetricCard icon={Clock3} label="Worked" value={formatHours(totalMs)} hint="Today" />
+        <MetricCard icon={Timer} label="Remaining" value={formatHours(remainingMs)} hint="Target left" />
+        <MetricCard icon={Coffee} label="Break" value={formatHours(breakMs)} hint="Away time" />
+        <MetricCard icon={BarChart3} label="Week" value={formatHours(weeklyMs)} hint="Mon to Sun" />
       </section>
     </div>
   );
@@ -1678,7 +1687,6 @@ export default function App() {
               completedMs={completedMs}
               distanceMeters={distanceMeters}
               liveLocation={liveLocation}
-              locationError={locationError}
               onBreak={onBreak}
               punchIn={requestPunchIn}
               punchOut={punchOut}
