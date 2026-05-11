@@ -38,7 +38,8 @@ const THEME_KEY = 'workpulse-theme';
 const DASHBOARD_ORDER_KEY = 'workpulse-dashboard-order';
 const TARGET_MS = 8 * 60 * 60 * 1000;
 const WORKPLACE_RADIUS_METERS = 150;
-const WORKPLACE = 'Technopark Phase 1';
+const WORKPLACE = 'Hilite Business Park';
+const OLD_WORKPLACE = 'Technopark Phase 1';
 const DETAIL_VIEWS = new Set(['notifications', 'notes', 'location', 'manual', 'personal', 'schedule', 'privacy', 'export', 'support']);
 const DASHBOARD_SECTIONS = ['hero', 'progress', 'notes', 'manual'];
 const VIEW_TITLES = {
@@ -99,8 +100,14 @@ function defaultGuestUser() {
   };
 }
 
+function getWorkplaceName(value) {
+  const cleanValue = String(value ?? '').trim();
+  return !cleanValue || cleanValue === OLD_WORKPLACE ? WORKPLACE : cleanValue;
+}
+
 function readGuestUser() {
-  return { ...defaultGuestUser(), ...readJsonStorage(GUEST_USER_KEY, {}) };
+  const user = { ...defaultGuestUser(), ...readJsonStorage(GUEST_USER_KEY, {}) };
+  return { ...user, workplace: getWorkplaceName(user.workplace) };
 }
 
 function readGuestRecords() {
@@ -217,6 +224,214 @@ function calculateBreakMs(record) {
   }, 0);
 }
 
+function getTimestamp(value) {
+  if (!value) return null;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  const parsed = new Date(value).getTime();
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function getExportRows(records) {
+  return Object.entries(records)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .flatMap(([date, record]) => {
+      const cleanRecord = normalizeRecord(record);
+      return cleanRecord.sessions.map((session, index) => {
+        const inTime = getTimestamp(session.in);
+        const outTime = getTimestamp(session.out);
+        return {
+          date,
+          duration: inTime && outTime ? Math.max(0, outTime - inTime) : 0,
+          focus: cleanRecord.focus.join(', '),
+          inTime,
+          notes: cleanRecord.notes,
+          outReason: session.outReason ?? '',
+          outTime,
+          session: index + 1,
+        };
+      });
+    });
+}
+
+function formatExportTime(value) {
+  return value ? formatClock(value) : '--';
+}
+
+function escapeXml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+function downloadBlob(filename, type, content) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function buildExportPayload(records, user) {
+  const rows = getExportRows(records);
+  const totalMs = rows.reduce((total, row) => total + row.duration, 0);
+
+  return {
+    exportedAt: new Date().toISOString(),
+    rows,
+    summary: {
+      sessions: rows.length,
+      totalHours: formatHours(totalMs),
+      trackedDays: Object.keys(records).length,
+    },
+    user: {
+      ...user,
+      workplace: getWorkplaceName(user?.workplace),
+    },
+  };
+}
+
+function buildExcelExport(payload) {
+  const rows = [
+    ['Date', 'Session', 'Punch In', 'Punch Out', 'Duration', 'Out Reason', 'Focus', 'Notes'],
+    ...payload.rows.map((row) => [
+      row.date,
+      row.session,
+      formatExportTime(row.inTime),
+      formatExportTime(row.outTime),
+      formatHours(row.duration),
+      row.outReason || 'checkout',
+      row.focus,
+      row.notes,
+    ]),
+  ];
+  const summaryRows = [
+    ['Employee', payload.user?.name ?? 'Employee'],
+    ['Employee ID', payload.user?.employeeId ?? '--'],
+    ['Workplace', payload.user?.workplace ?? WORKPLACE],
+    ['Tracked Days', payload.summary.trackedDays],
+    ['Sessions', payload.summary.sessions],
+    ['Total Work Hours', payload.summary.totalHours],
+    ['Exported At', new Date(payload.exportedAt).toLocaleString()],
+  ];
+
+  function worksheet(name, sheetRows) {
+    return `
+      <Worksheet ss:Name="${escapeXml(name)}">
+        <Table>
+          ${sheetRows.map((row) => `
+            <Row>${row.map((cell) => `<Cell><Data ss:Type="String">${escapeXml(cell)}</Data></Cell>`).join('')}</Row>
+          `).join('')}
+        </Table>
+      </Worksheet>
+    `;
+  }
+
+  return `<?xml version="1.0"?>
+    <Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+      xmlns:o="urn:schemas-microsoft-com:office:office"
+      xmlns:x="urn:schemas-microsoft-com:office:excel"
+      xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+      ${worksheet('Summary', summaryRows)}
+      ${worksheet('Sessions', rows)}
+    </Workbook>`;
+}
+
+function escapePdfText(value) {
+  return String(value ?? '')
+    .replace(/[^\x20-\x7E]/g, '?')
+    .replace(/\\/g, '\\\\')
+    .replace(/\(/g, '\\(')
+    .replace(/\)/g, '\\)');
+}
+
+function wrapPdfLine(line, limit = 88) {
+  const words = String(line).split(' ');
+  const lines = [];
+  let current = '';
+
+  words.forEach((word) => {
+    const next = current ? `${current} ${word}` : word;
+    if (next.length > limit && current) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = next;
+    }
+  });
+
+  if (current) lines.push(current);
+  return lines.length ? lines : [''];
+}
+
+function buildPdfExport(payload) {
+  const baseLines = [
+    'WorkPulse Export',
+    `Generated: ${new Date(payload.exportedAt).toLocaleString()}`,
+    `Employee: ${payload.user?.name ?? 'Employee'} (${payload.user?.employeeId ?? '--'})`,
+    `Workplace: ${payload.user?.workplace ?? WORKPLACE}`,
+    '',
+    `Tracked days: ${payload.summary.trackedDays}`,
+    `Sessions: ${payload.summary.sessions}`,
+    `Total work hours: ${payload.summary.totalHours}`,
+    '',
+    'Sessions',
+    'Date | In | Out | Duration | Reason',
+    ...payload.rows.map((row) => (
+      `${row.date} | ${formatExportTime(row.inTime)} | ${formatExportTime(row.outTime)} | ${formatHours(row.duration)} | ${row.outReason || 'checkout'}`
+    )),
+  ];
+  const lines = baseLines.flatMap((line) => wrapPdfLine(line));
+  const pages = [];
+
+  for (let index = 0; index < lines.length; index += 52) {
+    pages.push(lines.slice(index, index + 52));
+  }
+
+  const objects = new Map();
+  const fontId = 3;
+  const pageIds = [];
+  let nextId = 4;
+
+  pages.forEach((pageLines) => {
+    const pageId = nextId;
+    const contentId = nextId + 1;
+    nextId += 2;
+    pageIds.push(pageId);
+
+    const stream = `BT\n/F1 10 Tf\n50 792 Td\n14 TL\n${pageLines.map((line) => `(${escapePdfText(line)}) Tj\nT*`).join('')}ET`;
+    objects.set(contentId, `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`);
+    objects.set(pageId, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 ${fontId} 0 R >> >> /Contents ${contentId} 0 R >>`);
+  });
+
+  objects.set(1, '<< /Type /Catalog /Pages 2 0 R >>');
+  objects.set(2, `<< /Type /Pages /Kids [${pageIds.map((id) => `${id} 0 R`).join(' ')}] /Count ${pageIds.length} >>`);
+  objects.set(fontId, '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
+
+  const maxId = Math.max(...objects.keys());
+  let pdf = '%PDF-1.4\n';
+  const offsets = Array(maxId + 1).fill(0);
+
+  for (let id = 1; id <= maxId; id += 1) {
+    offsets[id] = pdf.length;
+    pdf += `${id} 0 obj\n${objects.get(id)}\nendobj\n`;
+  }
+
+  const xrefOffset = pdf.length;
+  pdf += `xref\n0 ${maxId + 1}\n0000000000 65535 f \n`;
+  for (let id = 1; id <= maxId; id += 1) {
+    pdf += `${String(offsets[id]).padStart(10, '0')} 00000 n \n`;
+  }
+  pdf += `trailer\n<< /Size ${maxId + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+  return pdf;
+}
+
 function calculateDistanceMeters(a, b) {
   if (!a || !b) return null;
 
@@ -295,7 +510,7 @@ function AppHeader({ activeView, now, onBack, setActiveView, theme, toggleTheme,
   const isBackView = DETAIL_VIEWS.has(activeView);
   const isHomeView = activeView === 'home';
   const title = VIEW_TITLES[activeView] ?? 'WorkPulse';
-  const workplace = user?.workplace ?? WORKPLACE;
+  const workplace = getWorkplaceName(user?.workplace);
 
   if (!isHomeView) {
     return (
@@ -375,7 +590,7 @@ function WorkplaceCard({ distanceMeters, liveLocation, setActiveView, user }) {
       <div className="workplace-main">
         <div>
           <span className="eyebrow">Workplace</span>
-          <h3>{user?.workplace ?? WORKPLACE}</h3>
+          <h3>{getWorkplaceName(user?.workplace)}</h3>
         </div>
       </div>
     </section>
@@ -413,30 +628,41 @@ function ManualTimeShortcut({ compact = false, setActiveView }) {
   );
 }
 
-function DashboardPanel({ children, dragId, dropId, id, moveSection, setDragId, setDropId }) {
+function DashboardPanel({ children, dragId, dropId, editingLayout, id, moveSection, setDragId, setDropId }) {
   return (
     <div
-      className={`home-panel panel-${id}${dragId === id ? ' dragging' : ''}${dropId === id ? ' drop-target' : ''}`}
-      draggable
+      className={`home-panel panel-${id}${editingLayout ? ' can-drag' : ' layout-locked'}${dragId === id ? ' dragging' : ''}${dropId === id ? ' drop-target' : ''}`}
+      draggable={editingLayout}
       onDragEnd={() => {
         setDragId('');
         setDropId('');
       }}
       onDragEnter={() => {
+        if (!editingLayout) return;
         if (dragId && dragId !== id) {
           setDropId(id);
         }
       }}
-      onDragOver={(event) => event.preventDefault()}
-      onDragStart={() => setDragId(id)}
+      onDragOver={(event) => {
+        if (!editingLayout) return;
+        event.preventDefault();
+      }}
+      onDragStart={(event) => {
+        if (!editingLayout) {
+          event.preventDefault();
+          return;
+        }
+        setDragId(id);
+      }}
       onDrop={(event) => {
         event.preventDefault();
+        if (!editingLayout) return;
         moveSection(dragId, id);
         setDragId('');
         setDropId('');
       }}
     >
-      <div className="panel-drag-handle" aria-hidden="true">
+      <div className="panel-drag-handle" aria-hidden={!editingLayout} title="Drag to reorder">
         <GripVertical size={16} />
       </div>
       {children}
@@ -451,6 +677,7 @@ function HomeScreen({ activeSession, breakMs, completedMs, dashboardOrder, dista
   const notePreview = todayRecord.notes?.trim();
   const [dragId, setDragId] = useState('');
   const [dropId, setDropId] = useState('');
+  const [editingLayout, setEditingLayout] = useState(false);
 
   function moveSection(sourceId, targetId) {
     if (!sourceId || !targetId || sourceId === targetId) return;
@@ -569,11 +796,30 @@ function HomeScreen({ activeSession, breakMs, completedMs, dashboardOrder, dista
   const orderedSections = [...dashboardOrder.filter((item) => sections[item]), ...Object.keys(sections).filter((item) => !dashboardOrder.includes(item))];
 
   return (
-    <div className="screen-stack home-stack">
+    <div className={`screen-stack home-stack${editingLayout ? ' layout-editing' : ' layout-locked'}`}>
+      <div className="layout-toolbar">
+        <div>
+          <span className="eyebrow">Dashboard layout</span>
+          <strong>{editingLayout ? 'Drag cards to reorder' : 'Cards are locked'}</strong>
+        </div>
+        <button
+          aria-pressed={editingLayout}
+          onClick={() => {
+            setEditingLayout((current) => !current);
+            setDragId('');
+            setDropId('');
+          }}
+          type="button"
+        >
+          {editingLayout ? <LockKeyhole size={16} /> : <GripVertical size={16} />}
+          {editingLayout ? 'Lock' : 'Edit'}
+        </button>
+      </div>
       {orderedSections.map((sectionId) => (
         <DashboardPanel
           dragId={dragId}
           dropId={dropId}
+          editingLayout={editingLayout}
           id={sectionId}
           key={sectionId}
           moveSection={moveSection}
@@ -601,7 +847,7 @@ function TimelineScreen({ records, today, todayRecord }) {
   const events = getDailyEvents(todayRecord.sessions);
 
   return (
-    <div className="screen-stack">
+    <div className={`screen-stack timeline-screen ${Object.keys(records).length ? 'has-history' : 'no-history'}`}>
       <div className="month-title">
         <h2>Timeline</h2>
         <button type="button" aria-label="Open calendar">
@@ -759,7 +1005,7 @@ function WeeklyChartsPanel({ series }) {
         </div>
         <div>
           <span>Best day</span>
-          <strong>{bestDay ? `${bestDay.label} · ${formatHours(bestDay.value)}` : '--'}</strong>
+          <strong>{bestDay ? `${bestDay.label} - ${formatHours(bestDay.value)}` : '--'}</strong>
         </div>
       </div>
 
@@ -859,7 +1105,7 @@ function ProfileScreen({ clearAll, logout, setActiveView, user }) {
         <div>
           <h2>{user.name}</h2>
           <p>Employee ID: {user.employeeId}</p>
-          <span>{user.workplace ?? WORKPLACE}</span>
+          <span>{getWorkplaceName(user.workplace)}</span>
         </div>
       </section>
 
@@ -917,7 +1163,7 @@ function PersonalInformationScreen({ user }) {
         <SummaryRow label="Account Type" value={user.isGuest ? 'Guest' : 'Signed in'} />
       </DetailCard>
       <DetailCard icon={MapPin} title="Workplace">
-        <SummaryRow label="Location Name" value={user.workplace || WORKPLACE} />
+        <SummaryRow label="Location Name" value={getWorkplaceName(user.workplace)} />
         <SummaryRow label="Pinned Location" value={user.location ? `${user.location.latitude}, ${user.location.longitude}` : 'Not saved'} />
       </DetailCard>
     </div>
@@ -961,22 +1207,33 @@ function DataPrivacyScreen({ clearAll, isGuest }) {
 function ExportDataScreen({ records, user }) {
   const totalDays = Object.keys(records).length;
   const totalSessions = Object.values(records).reduce((total, record) => total + normalizeRecord(record).sessions.length, 0);
+  const filenameDate = formatDateKey(new Date());
 
-  function exportData() {
-    const payload = {
-      exportedAt: new Date().toISOString(),
-      user,
-      records,
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `workpulse-export-${formatDateKey(new Date())}.json`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
+  function exportJson() {
+    const payload = buildExportPayload(records, user);
+    downloadBlob(
+      `workpulse-export-${filenameDate}.json`,
+      'application/json',
+      JSON.stringify({ ...payload, records }, null, 2),
+    );
+  }
+
+  function exportExcel() {
+    const payload = buildExportPayload(records, user);
+    downloadBlob(
+      `workpulse-export-${filenameDate}.xls`,
+      'application/vnd.ms-excel',
+      buildExcelExport(payload),
+    );
+  }
+
+  function exportPdf() {
+    const payload = buildExportPayload(records, user);
+    downloadBlob(
+      `workpulse-export-${filenameDate}.pdf`,
+      'application/pdf',
+      buildPdfExport(payload),
+    );
   }
 
   return (
@@ -984,11 +1241,21 @@ function ExportDataScreen({ records, user }) {
       <DetailCard icon={Download} title="Export Data">
         <SummaryRow label="Tracked Days" value={totalDays} />
         <SummaryRow label="Sessions" value={totalSessions} />
-        <SummaryRow label="Format" value="JSON" />
-        <button className="primary-action detail-primary" onClick={exportData} type="button">
-          <Download size={18} />
-          Download Export
-        </button>
+        <SummaryRow label="Formats" value="PDF, Excel, JSON" />
+        <div className="export-actions">
+          <button className="primary-action detail-primary" onClick={exportPdf} type="button">
+            <FileText size={18} />
+            Export PDF
+          </button>
+          <button className="secondary-action detail-primary" onClick={exportExcel} type="button">
+            <Download size={18} />
+            Export Excel
+          </button>
+          <button className="secondary-action detail-primary" onClick={exportJson} type="button">
+            <Download size={18} />
+            Export JSON
+          </button>
+        </div>
       </DetailCard>
     </div>
   );
@@ -1121,7 +1388,7 @@ function ManualTimeScreen({ dateKey, saveManualSession }) {
 }
 
 function LocationScreen({ saveLocation, user }) {
-  const [workplace, setWorkplace] = useState(user.workplace ?? WORKPLACE);
+  const [workplace, setWorkplace] = useState(getWorkplaceName(user.workplace));
   const [coords, setCoords] = useState(user.location ?? null);
   const [status, setStatus] = useState('');
   const hasPinnedLocation = Boolean(coords);
@@ -1180,7 +1447,7 @@ function LocationScreen({ saveLocation, user }) {
         <span>Location name</span>
         <input
           onChange={(event) => setWorkplace(event.target.value)}
-          placeholder="Technopark Phase 1"
+          placeholder="Hilite Business Park"
           value={workplace}
         />
       </label>
@@ -1239,7 +1506,7 @@ function NotificationsScreen() {
   }
 
   return (
-    <div className="screen-stack">
+    <div className="screen-stack notifications-screen">
       <div className="segment" role="tablist" aria-label="Notification filter">
         <button aria-pressed={filter === 'all'} className={filter === 'all' ? 'active' : ''} onClick={() => setFilter('all')} type="button">All</button>
         <button aria-pressed={filter === 'unread'} className={filter === 'unread' ? 'active' : ''} onClick={() => setFilter('unread')} type="button">
@@ -1589,6 +1856,31 @@ function ArrivalPrompt({ distanceMeters, onDismiss, onPunchIn, workplace }) {
   );
 }
 
+function ClearRecordsPrompt({ onCancel, onConfirm }) {
+  return (
+    <div className="modal-backdrop">
+      <section className="confirm-card warning-card">
+        <div className="confirm-icon danger">
+          <CircleAlert size={24} />
+        </div>
+        <h2>Clear all records?</h2>
+        <p>
+          This will remove your punch history, notes, focus tags, reports, and daily totals for this profile.
+          This action cannot be undone.
+        </p>
+        <div className="confirm-actions equal">
+          <button className="secondary-action" onClick={onCancel} type="button">
+            Keep Records
+          </button>
+          <button className="primary-action danger" onClick={onConfirm} type="button">
+            Clear Records
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function BottomNav({ activeView, setActiveView }) {
   const items = [
     { id: 'home', label: 'Home', icon: Home },
@@ -1642,6 +1934,7 @@ export default function App() {
   const [arrivalDismissed, setArrivalDismissed] = useState(false);
   const [liveLocation, setLiveLocation] = useState(null);
   const [locationError, setLocationError] = useState('');
+  const [clearPromptOpen, setClearPromptOpen] = useState(false);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
@@ -2006,16 +2299,18 @@ export default function App() {
     }
   }
 
-  async function clearAll() {
+  function requestClearAll() {
     setActionError('');
+    setClearPromptOpen(true);
+  }
 
-    if (!window.confirm('Clear all WorkPulse records for this profile? This cannot be undone.')) {
-      return;
-    }
+  async function confirmClearAll() {
+    setActionError('');
 
     if (isGuest) {
       setRecords({});
       setActiveView('home');
+      setClearPromptOpen(false);
       return;
     }
 
@@ -2026,18 +2321,21 @@ export default function App() {
       });
       setRecords(data.records ?? {});
       setActiveView('home');
+      setClearPromptOpen(false);
     } catch (error) {
       setActionError(error.message);
+      setClearPromptOpen(false);
     }
   }
 
   async function saveLocation(workplace, location) {
     setActionError('');
+    const cleanWorkplace = getWorkplaceName(workplace);
 
     if (isGuest) {
       setUser((current) => ({
         ...(current ?? defaultGuestUser()),
-        workplace,
+        workplace: cleanWorkplace,
         location: location ?? null,
       }));
       setActiveView('home');
@@ -2049,7 +2347,7 @@ export default function App() {
         method: 'PUT',
         token,
         body: {
-          workplace,
+          workplace: cleanWorkplace,
           latitude: location?.latitude,
           longitude: location?.longitude,
         },
@@ -2180,21 +2478,22 @@ export default function App() {
           ) : null}
           {activeView === 'timeline' ? <TimelineScreen records={records} today={today} todayRecord={todayRecord} /> : null}
           {activeView === 'reports' ? <ReportsScreen records={records} today={today} /> : null}
-          {activeView === 'profile' ? <ProfileScreen clearAll={clearAll} logout={logout} setActiveView={navigateView} user={user} /> : null}
+          {activeView === 'profile' ? <ProfileScreen clearAll={requestClearAll} logout={logout} setActiveView={navigateView} user={user} /> : null}
           {activeView === 'notifications' ? <NotificationsScreen /> : null}
           {activeView === 'notes' ? <NotesScreen record={todayRecord} saveNotes={saveNotes} /> : null}
           {activeView === 'location' ? <LocationScreen saveLocation={saveLocation} user={user} /> : null}
           {activeView === 'manual' ? <ManualTimeScreen dateKey={dateKey} saveManualSession={saveManualSession} /> : null}
           {activeView === 'personal' ? <PersonalInformationScreen user={user} /> : null}
           {activeView === 'schedule' ? <WorkScheduleScreen /> : null}
-          {activeView === 'privacy' ? <DataPrivacyScreen clearAll={clearAll} isGuest={isGuest} /> : null}
+          {activeView === 'privacy' ? <DataPrivacyScreen clearAll={requestClearAll} isGuest={isGuest} /> : null}
           {activeView === 'export' ? <ExportDataScreen records={records} user={user} /> : null}
           {activeView === 'support' ? <HelpSupportScreen /> : null}
         </section>
 
         <BottomNav activeView={activeView} setActiveView={navigateView} />
         {breakPrompt ? <BreakPrompt gapMs={breakPrompt.gapMs} onAnswer={answerBreakPrompt} /> : null}
-        {arrivalPrompt && !breakPrompt ? (
+        {clearPromptOpen ? <ClearRecordsPrompt onCancel={() => setClearPromptOpen(false)} onConfirm={confirmClearAll} /> : null}
+        {arrivalPrompt && !breakPrompt && !clearPromptOpen ? (
           <ArrivalPrompt
             distanceMeters={distanceMeters}
             onDismiss={() => {
@@ -2202,7 +2501,7 @@ export default function App() {
               setArrivalDismissed(true);
             }}
             onPunchIn={requestPunchIn}
-            workplace={user?.workplace ?? WORKPLACE}
+            workplace={getWorkplaceName(user?.workplace)}
           />
         ) : null}
       </section>

@@ -517,6 +517,7 @@ button:disabled {
 
 .compact-header-top {
   flex-wrap: wrap;
+  justify-content: space-between;
 }
 
 .compact-header-bottom {
@@ -597,6 +598,7 @@ button:disabled {
 .compact-actions {
   flex-wrap: wrap;
   justify-content: flex-end;
+  margin-left: auto;
 }
 
 .header-icon,
@@ -689,7 +691,7 @@ button:disabled {
   top: 12px;
   right: 12px;
   z-index: 2;
-  display: inline-grid;
+  display: none;
   width: 32px;
   height: 32px;
   place-items: center;
@@ -698,6 +700,57 @@ button:disabled {
   color: #98a2b3;
   box-shadow: 0 10px 22px rgba(17, 24, 39, 0.08);
   pointer-events: none;
+}
+
+.layout-editing .panel-drag-handle {
+  display: inline-grid;
+}
+
+.layout-editing .home-panel.can-drag {
+  cursor: grab;
+}
+
+.layout-editing .home-panel.can-drag:active {
+  cursor: grabbing;
+}
+
+.layout-toolbar {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 10px 12px;
+  box-shadow: 0 10px 24px rgba(17, 24, 39, 0.05);
+}
+
+.layout-toolbar div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.layout-toolbar strong {
+  font-size: 13px;
+}
+
+.layout-toolbar button {
+  display: inline-flex;
+  min-height: 40px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border-radius: 12px;
+  background: #fff;
+  padding: 0 12px;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 900;
+  box-shadow: 0 8px 18px rgba(17, 24, 39, 0.08);
 }
 
 .glass-card,
@@ -1590,7 +1643,8 @@ button:disabled {
   font-weight: 800;
 }
 
-.line-chart-card svg {
+.line-chart-card svg,
+.combined-chart-card svg {
   width: 100%;
   height: auto;
   overflow: visible;
@@ -1644,6 +1698,12 @@ button:disabled {
 }
 
 .reports-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.timeline-screen,
+.notifications-screen {
   display: grid;
   gap: 14px;
 }
@@ -1777,6 +1837,12 @@ button:disabled {
 
 .detail-primary {
   width: 100%;
+  margin-top: 6px;
+}
+
+.export-actions {
+  display: grid;
+  gap: 10px;
   margin-top: 6px;
 }
 
@@ -2322,6 +2388,11 @@ button:disabled {
   background: #f1f0ff;
 }
 
+.confirm-icon.danger {
+  color: var(--red);
+  background: #fff0ef;
+}
+
 .confirm-card h2 {
   font-size: 20px;
 }
@@ -2340,6 +2411,10 @@ button:disabled {
   display: grid;
   grid-template-columns: 1fr 90px;
   gap: 10px;
+}
+
+.confirm-actions.equal {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .bottom-nav {
@@ -2424,6 +2499,7 @@ button:disabled {
 :root[data-theme="dark"] .location-field,
 :root[data-theme="dark"] .detail-card,
 :root[data-theme="dark"] .danger-card,
+:root[data-theme="dark"] .layout-toolbar,
 :root[data-theme="dark"] .auth-toggle,
 :root[data-theme="dark"] .auth-form label,
 :root[data-theme="dark"] .guest-name-field {
@@ -2454,6 +2530,7 @@ button:disabled {
 :root[data-theme="dark"] .month-title button,
 :root[data-theme="dark"] .manual-shortcut-card button,
 :root[data-theme="dark"] .focus-tags button,
+:root[data-theme="dark"] .layout-toolbar button,
 :root[data-theme="dark"] .segment button.active,
 :root[data-theme="dark"] .app-shell .bottom-nav button.active {
   background: #242047;
@@ -2736,6 +2813,17 @@ button:disabled {
     padding: 28px 32px 18px;
   }
 
+  .app-shell .compact-header,
+  .app-shell.detail-shell .compact-header {
+    width: min(1180px, calc(100% - 64px));
+    justify-self: center;
+    padding: 28px 0 18px;
+  }
+
+  .app-shell.detail-shell .compact-header {
+    width: min(920px, calc(100% - 64px));
+  }
+
   .app-shell .app-header h1 {
     font-size: 24px;
   }
@@ -2808,9 +2896,16 @@ button:disabled {
   }
 
   .app-shell .home-stack {
+    width: min(1180px, 100%);
+    max-width: 1180px;
+    margin: 0 auto;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: start;
     gap: 18px;
+  }
+
+  .app-shell .home-stack .layout-toolbar {
+    grid-column: 1 / -1;
   }
 
   .app-shell .home-stack .home-panel.panel-hero,
@@ -2836,7 +2931,6 @@ button:disabled {
     grid-column: span 1;
   }
 
-  .app-shell .screen-stack:not(.home-stack),
   .app-shell .notes-screen,
   .app-shell .manual-screen,
   .app-shell .location-screen {
@@ -2844,8 +2938,8 @@ button:disabled {
   }
 
   .app-shell .profile-screen {
-    width: min(920px, 100%);
-    max-width: 920px;
+    width: min(1040px, 100%);
+    max-width: 1040px;
     margin: 0 auto;
   }
 
@@ -2870,6 +2964,10 @@ button:disabled {
 
   .app-shell .manual-form {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .app-shell .export-actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .app-shell .manual-form > .manual-field,
@@ -2908,18 +3006,58 @@ button:disabled {
     margin-top: -10px;
   }
 
+  .app-shell .timeline-screen,
   .app-shell .reports-grid {
-    max-width: none;
+    width: min(1180px, 100%);
+    max-width: 1180px;
+    margin: 0 auto;
+  }
+
+  .app-shell .notifications-screen {
+    width: min(760px, 100%);
+    max-width: 760px;
+    margin: 0 auto;
+  }
+
+  .app-shell .timeline-screen {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .app-shell .timeline-screen .month-title,
+  .app-shell .timeline-screen .date-strip {
+    grid-column: 1 / -1;
+  }
+
+  .app-shell .timeline-screen .timeline-card {
+    grid-column: span 8;
+    min-height: 260px;
+  }
+
+  .app-shell .timeline-screen .history-card {
+    grid-column: span 4;
+    align-self: start;
+  }
+
+  .app-shell .timeline-screen.no-history .timeline-card {
+    grid-column: 1 / -1;
+  }
+
+  .app-shell .timeline-screen.no-history .empty-state {
+    min-height: 220px;
+  }
+
+  .app-shell .reports-grid {
     grid-template-columns: repeat(12, minmax(0, 1fr));
     align-items: stretch;
   }
 
   .app-shell .reports-grid .analytics-hero {
-    grid-column: span 5;
+    grid-column: span 4;
   }
 
   .app-shell .reports-grid .insight-card {
-    grid-column: span 7;
+    grid-column: span 8;
   }
 
   .app-shell .reports-grid .combined-chart-card {
@@ -2962,6 +3100,13 @@ button:disabled {
     padding-left: 24px;
   }
 
+  .app-shell .compact-header,
+  .app-shell.detail-shell .compact-header {
+    width: min(100%, calc(100% - 48px));
+    padding-right: 0;
+    padding-left: 0;
+  }
+
   .app-shell .home-stack {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -2982,6 +3127,11 @@ button:disabled {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .app-shell .timeline-screen {
+    max-width: none;
+    grid-template-columns: 1fr;
+  }
+
   .app-shell .reports-grid .analytics-hero,
   .app-shell .reports-grid .insight-card,
   .app-shell .reports-grid .combined-chart-card {
@@ -2989,6 +3139,13 @@ button:disabled {
   }
 
   .app-shell .reports-grid .combined-chart-card {
+    grid-column: 1 / -1;
+  }
+
+  .app-shell .timeline-screen .month-title,
+  .app-shell .timeline-screen .date-strip,
+  .app-shell .timeline-screen .timeline-card,
+  .app-shell .timeline-screen .history-card {
     grid-column: 1 / -1;
   }
 }
@@ -3018,6 +3175,10 @@ button:disabled {
     padding-left: clamp(22px, 5vw, 48px);
   }
 
+  .compact-header-top {
+    gap: 10px;
+  }
+
   .home-stack {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -3031,7 +3192,7 @@ button:disabled {
   .location-screen,
   .profile-screen,
   .screen-stack:not(.home-stack) {
-    max-width: 560px;
+    max-width: 640px;
     margin: 0 auto;
   }
 
@@ -3042,6 +3203,12 @@ button:disabled {
 
   .chart-toggle {
     width: 100%;
+  }
+
+  .reports-grid,
+  .timeline-screen {
+    width: min(640px, 100%);
+    margin: 0 auto;
   }
 }
 
@@ -3089,6 +3256,28 @@ button:disabled {
     padding: 0 12px;
   }
 
+  .compact-header-top {
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .compact-actions {
+    gap: 8px;
+  }
+
+  .header-utility-action {
+    min-height: 42px;
+    padding: 0 12px;
+  }
+
+  .layout-toolbar {
+    padding: 9px 10px;
+  }
+
+  .layout-toolbar .eyebrow {
+    display: none;
+  }
+
   .chart-header {
     flex-direction: column;
     align-items: stretch;
@@ -3096,6 +3285,12 @@ button:disabled {
 
   .chart-summary-strip {
     grid-template-columns: 1fr;
+  }
+
+  .date-strip {
+    grid-template-columns: repeat(7, minmax(54px, 1fr));
+    overflow-x: auto;
+    padding-bottom: 2px;
   }
 
   .chart-label-row {
@@ -3118,5 +3313,9 @@ button:disabled {
 
   .header-actions {
     justify-self: end;
+  }
+
+  .confirm-actions.equal {
+    grid-template-columns: 1fr;
   }
 }

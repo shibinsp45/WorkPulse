@@ -12,6 +12,8 @@ const DATA_DIR = path.join(__dirname, 'data');
 const DATA_FILE = path.join(DATA_DIR, 'workpulse.json');
 const JWT_SECRET = process.env.JWT_SECRET ?? 'workpulse-local-dev-secret';
 const PORT = process.env.PORT ?? 4000;
+const WORKPLACE = 'Hilite Business Park';
+const OLD_WORKPLACE = 'Technopark Phase 1';
 
 const app = express();
 
@@ -41,7 +43,7 @@ function publicUser(user) {
     name: user.name,
     email: user.email,
     employeeId: user.employeeId,
-    workplace: user.workplace,
+    workplace: !user.workplace || user.workplace === OLD_WORKPLACE ? WORKPLACE : user.workplace,
     location: user.location ?? null,
   };
 }
@@ -132,7 +134,7 @@ app.post('/api/auth/signup', async (request, response) => {
     name,
     email,
     employeeId,
-    workplace: 'Technopark Phase 1',
+    workplace: WORKPLACE,
     location: null,
     passwordHash: await bcrypt.hash(password, 10),
     records: {},
@@ -186,7 +188,7 @@ app.put('/api/me/location', requireAuth, async (request, response) => {
     return response.status(400).json({ message: 'Location name is required' });
   }
 
-  request.user.workplace = workplace;
+  request.user.workplace = workplace === OLD_WORKPLACE ? WORKPLACE : workplace;
   request.user.location = Number.isFinite(latitude) && Number.isFinite(longitude)
     ? { latitude, longitude }
     : null;
