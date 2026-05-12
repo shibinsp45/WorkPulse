@@ -14,7 +14,7 @@ const JWT_SECRET = process.env.JWT_SECRET ?? 'workpulse-local-dev-secret';
 const PORT = process.env.PORT ?? 4000;
 const WORKPLACE = 'Hilite Business Park';
 const OLD_WORKPLACE = 'Technopark Phase 1';
-const DEFAULT_BREAK_MS = 60 * 60 * 1000;
+const DEFAULT_SCHEDULE = { start: '09:00', end: '18:00' };
 
 const app = express();
 
@@ -46,6 +46,7 @@ function publicUser(user) {
     employeeId: user.employeeId,
     workplace: !user.workplace || user.workplace === OLD_WORKPLACE ? WORKPLACE : user.workplace,
     location: user.location ?? null,
+    schedule: normalizeSchedule(user.schedule),
   };
 }
 
@@ -64,9 +65,25 @@ function sortSessions(sessions) {
   return [...sessions].sort((a, b) => Number(a.in) - Number(b.in));
 }
 
+function isValidTimeInput(value) {
+  return /^\d{2}:\d{2}$/.test(String(value ?? ''));
+}
+
+function parseTimeMinutes(value) {
+  if (!isValidTimeInput(value)) return null;
+  const [hours, minutes] = value.split(':').map(Number);
+  if (hours > 23 || minutes > 59) return null;
+  return hours * 60 + minutes;
+}
+
+function normalizeSchedule(schedule) {
+  const start = isValidTimeInput(schedule?.start) ? schedule.start : DEFAULT_SCHEDULE.start;
+  const end = isValidTimeInput(schedule?.end) ? schedule.end : DEFAULT_SCHEDULE.end;
+  return { start, end };
+}
+
 function normalizeRecord(record) {
   return {
-    fixedBreakMs: Math.max(0, Number(record?.fixedBreakMs) || 0),
     sessions: sortSessions(record?.sessions ?? []),
     notes: record?.notes ?? '',
     focus: record?.focus ?? [],
@@ -138,6 +155,7 @@ app.post('/api/auth/signup', async (request, response) => {
     employeeId,
     workplace: WORKPLACE,
     location: null,
+    schedule: DEFAULT_SCHEDULE,
     passwordHash: await bcrypt.hash(password, 10),
     records: {},
     createdAt: Date.now(),
@@ -194,6 +212,22 @@ app.put('/api/me/location', requireAuth, async (request, response) => {
   request.user.location = Number.isFinite(latitude) && Number.isFinite(longitude)
     ? { latitude, longitude }
     : null;
+  updateUser(request.store, request.user);
+  await writeStore(request.store);
+
+  response.json({ user: publicUser(request.user) });
+});
+
+app.put('/api/me/schedule', requireAuth, async (request, response) => {
+  const schedule = normalizeSchedule(request.body);
+  const startMinutes = parseTimeMinutes(schedule.start);
+  const endMinutes = parseTimeMinutes(schedule.end);
+
+  if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes) {
+    return response.status(400).json({ message: 'Choose a valid start and end time' });
+  }
+
+  request.user.schedule = schedule;
   updateUser(request.store, request.user);
   await writeStore(request.store);
 
@@ -291,22 +325,6 @@ app.put('/api/records/:date/notes', requireAuth, async (request, response) => {
   record.notes = String(request.body.notes ?? '');
   record.focus = Array.isArray(request.body.focus) ? request.body.focus : [];
   user.records = { ...(user.records ?? {}), [request.params.date]: record };
-  updateUser(request.store, user);
-  await writeStore(request.store);
-
-  response.json({ records: user.records, record });
-});
-
-app.put('/api/records/:date/break', requireAuth, async (request, response) => {
-  const user = request.user;
-  const date = String(request.params.date ?? todayKey());
-  const record = normalizeRecord(user.records?.[date]);
-  const requestedBreakMs = Number(request.body.fixedBreakMs);
-
-  record.fixedBreakMs = Number.isFinite(requestedBreakMs)
-    ? Math.max(0, requestedBreakMs)
-    : DEFAULT_BREAK_MS;
-  user.records = { ...(user.records ?? {}), [date]: record };
   updateUser(request.store, user);
   await writeStore(request.store);
 

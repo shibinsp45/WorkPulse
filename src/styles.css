@@ -1840,6 +1840,37 @@ button:disabled {
   padding: 12px;
 }
 
+.timeline-shift-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.8fr);
+  gap: 14px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--card);
+  padding: 16px;
+  box-shadow: var(--shadow);
+}
+
+.timeline-shift-card h2 {
+  margin-top: 4px;
+  font-size: 20px;
+}
+
+.timeline-shift-card p {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.timeline-shift-grid {
+  display: grid;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 4px 12px;
+}
+
 .event-row {
   display: grid;
   grid-template-columns: 64px 20px 1fr;
@@ -2294,6 +2325,48 @@ button:disabled {
 
 .theme-settings-row[aria-pressed="true"] .settings-switch i {
   transform: translateX(18px);
+}
+
+.schedule-form {
+  display: grid;
+  gap: 12px;
+}
+
+.schedule-time-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.schedule-field {
+  display: grid;
+  gap: 8px;
+}
+
+.schedule-field span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.schedule-field input {
+  width: 100%;
+  height: 44px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  padding: 0 12px;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+}
+
+.schedule-preview {
+  display: grid;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 6px 12px;
 }
 
 .detail-screen {
@@ -3041,6 +3114,8 @@ button:disabled {
 :root[data-theme="dark"] .shift-info-card,
 :root[data-theme="dark"] .mini-bar-chart,
 :root[data-theme="dark"] .timeline-card,
+:root[data-theme="dark"] .timeline-shift-card,
+:root[data-theme="dark"] .timeline-shift-grid,
 :root[data-theme="dark"] .history-card,
 :root[data-theme="dark"] .analytics-hero,
 :root[data-theme="dark"] .insight-card,
@@ -3127,7 +3202,8 @@ button:disabled {
 :root[data-theme="dark"] textarea,
 :root[data-theme="dark"] .manual-field input,
 :root[data-theme="dark"] .location-field input,
-:root[data-theme="dark"] .note-field textarea {
+:root[data-theme="dark"] .note-field textarea,
+:root[data-theme="dark"] .schedule-field input {
   border-color: var(--line);
   color: var(--ink);
   background: #101827;
@@ -3763,7 +3839,8 @@ button:disabled {
 
   .app-shell .timeline-screen .month-title,
   .app-shell .timeline-screen .timeline-tools,
-  .app-shell .timeline-screen .date-strip {
+  .app-shell .timeline-screen .date-strip,
+  .app-shell .timeline-screen .timeline-shift-card {
     grid-column: 1 / -1;
   }
 
@@ -3893,6 +3970,7 @@ button:disabled {
   .app-shell .timeline-screen .month-title,
   .app-shell .timeline-screen .timeline-tools,
   .app-shell .timeline-screen .date-strip,
+  .app-shell .timeline-screen .timeline-shift-card,
   .app-shell .timeline-screen .timeline-card,
   .app-shell .timeline-screen .history-card {
     grid-column: 1 / -1;
@@ -3946,6 +4024,11 @@ button:disabled {
 
   .location-status-grid,
   .location-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .timeline-shift-card,
+  .schedule-time-grid {
     grid-template-columns: 1fr;
   }
 
@@ -4071,6 +4154,11 @@ button:disabled {
 
   .location-status-grid,
   .location-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .timeline-shift-card,
+  .schedule-time-grid {
     grid-template-columns: 1fr;
   }
 

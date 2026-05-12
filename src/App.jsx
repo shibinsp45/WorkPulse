@@ -37,11 +37,11 @@ const ONBOARDING_KEY = 'workpulse-onboarding-v2-done';
 const THEME_KEY = 'workpulse-theme';
 const DASHBOARD_ORDER_KEY = 'workpulse-dashboard-order';
 const TARGET_MS = 8 * 60 * 60 * 1000;
-const DEFAULT_BREAK_MS = 60 * 60 * 1000;
 const WORKPLACE_RADIUS_METERS = 150;
 const WORKPLACE_AWAY_REMINDER_METERS = 500;
 const WORKPLACE = 'Hilite Business Park';
 const OLD_WORKPLACE = 'Technopark Phase 1';
+const DEFAULT_SCHEDULE = { start: '09:00', end: '18:00' };
 const DETAIL_VIEWS = new Set(['notifications', 'location', 'manual', 'personal', 'schedule', 'privacy', 'export', 'support']);
 const DASHBOARD_SECTIONS = ['hero', 'quick', 'metrics', 'weekly', 'work'];
 const VIEW_TITLES = {
@@ -98,6 +98,7 @@ function defaultGuestUser() {
     employeeId: 'GUEST',
     workplace: WORKPLACE,
     location: null,
+    schedule: DEFAULT_SCHEDULE,
     isGuest: true,
   };
 }
@@ -114,7 +115,7 @@ function getNotificationPermission() {
 
 function readGuestUser() {
   const user = { ...defaultGuestUser(), ...readJsonStorage(GUEST_USER_KEY, {}) };
-  return { ...user, workplace: getWorkplaceName(user.workplace) };
+  return { ...user, schedule: normalizeSchedule(user.schedule), workplace: getWorkplaceName(user.workplace) };
 }
 
 function readGuestRecords() {
@@ -194,7 +195,6 @@ function getWeekDays(date) {
 
 function normalizeRecord(record) {
   return {
-    fixedBreakMs: Math.max(0, Number(record?.fixedBreakMs) || 0),
     sessions: [...(record?.sessions ?? [])].sort((a, b) => Number(a.in) - Number(b.in)),
     notes: record?.notes ?? '',
     focus: record?.focus ?? [],
@@ -213,36 +213,73 @@ function getTodayRecord(records, dateKey) {
   return normalizeRecord(records[dateKey]);
 }
 
+function isValidTimeInput(value) {
+  return /^\d{2}:\d{2}$/.test(String(value ?? ''));
+}
+
+function parseTimeMinutes(value) {
+  if (!isValidTimeInput(value)) return null;
+  const [hours, minutes] = value.split(':').map(Number);
+  if (hours > 23 || minutes > 59) return null;
+  return hours * 60 + minutes;
+}
+
+function normalizeSchedule(schedule) {
+  const start = isValidTimeInput(schedule?.start) ? schedule.start : DEFAULT_SCHEDULE.start;
+  const end = isValidTimeInput(schedule?.end) ? schedule.end : DEFAULT_SCHEDULE.end;
+  return { start, end };
+}
+
+function formatTimeLabel(value) {
+  const minutes = parseTimeMinutes(value);
+  if (minutes === null) return '--';
+
+  const date = new Date();
+  date.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatScheduleRange(schedule) {
+  const cleanSchedule = normalizeSchedule(schedule);
+  return `${formatTimeLabel(cleanSchedule.start)} - ${formatTimeLabel(cleanSchedule.end)}`;
+}
+
+function calculateScheduleDurationMs(schedule) {
+  const cleanSchedule = normalizeSchedule(schedule);
+  const startMinutes = parseTimeMinutes(cleanSchedule.start);
+  const endMinutes = parseTimeMinutes(cleanSchedule.end);
+
+  if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes) {
+    return 0;
+  }
+
+  return (endMinutes - startMinutes) * 60 * 1000;
+}
+
 function calculateWorkedMs(record, now) {
   const cleanRecord = normalizeRecord(record);
-  const sessionMs = cleanRecord.sessions.reduce((total, session) => {
+  return cleanRecord.sessions.reduce((total, session) => {
     const out = session.out ?? now;
     return total + Math.max(0, out - session.in);
   }, 0);
-
-  return Math.max(0, sessionMs - cleanRecord.fixedBreakMs);
 }
 
 function calculateCompletedMs(record) {
   const cleanRecord = normalizeRecord(record);
-  const sessionMs = cleanRecord.sessions.reduce((total, session) => {
+  return cleanRecord.sessions.reduce((total, session) => {
     if (!session.out) return total;
     return total + Math.max(0, session.out - session.in);
   }, 0);
-
-  return Math.max(0, sessionMs - cleanRecord.fixedBreakMs);
 }
 
 function calculateBreakMs(record) {
   const cleanRecord = normalizeRecord(record);
-  const trackedBreakMs = cleanRecord.sessions.reduce((total, session, index, sessions) => {
+  return cleanRecord.sessions.reduce((total, session, index, sessions) => {
     if (index === 0) return total;
     const previous = sessions[index - 1];
     if (!previous.out || previous.outReason !== 'break') return total;
     return total + Math.max(0, session.in - previous.out);
   }, 0);
-
-  return trackedBreakMs + cleanRecord.fixedBreakMs;
 }
 
 function getTimestamp(value) {
@@ -566,7 +603,7 @@ function WorkPulseLogo({ compact = false }) {
   );
 }
 
-function AppHeader({ activeView, now, onBack, setActiveView, theme, toggleTheme, user }) {
+function AppHeader({ activeView, now, onBack, setActiveView, user }) {
   const isBackView = DETAIL_VIEWS.has(activeView);
   const isHomeView = activeView === 'home';
   const title = VIEW_TITLES[activeView] ?? 'WorkPulse';
@@ -620,9 +657,6 @@ function AppHeader({ activeView, now, onBack, setActiveView, theme, toggleTheme,
       </div>
 
       <div className="header-actions">
-        <button className="header-icon" onClick={toggleTheme} type="button" aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
-          {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-        </button>
         <button className="header-icon has-dot" onClick={() => setActiveView('notifications')} type="button" aria-label="Open notifications">
           <Bell size={18} />
         </button>
@@ -775,7 +809,7 @@ function DashboardPanel({ children, dragId, dropId, editingLayout, id, moveSecti
   );
 }
 
-function HomeScreen({ activeSession, addFixedBreak, breakMs, completedMs, dashboardOrder, distanceMeters, liveLocation, now, onBreak, punchIn, punchOut, records, setActiveView, setDashboardOrder, today, todayRecord, totalMs, user, weeklyMs }) {
+function HomeScreen({ activeSession, breakMs, completedMs, dashboardOrder, distanceMeters, endBreak, liveLocation, markBreak, now, onBreak, punchIn, punchOut, records, setActiveView, setDashboardOrder, today, todayRecord, totalMs, user, weeklyMs }) {
   const remainingMs = Math.max(0, TARGET_MS - totalMs);
   const overtimeMs = Math.max(0, totalMs - TARGET_MS);
   const lastClosed = todayRecord.sessions.filter((session) => session.out && session.outReason !== 'break').at(-1);
@@ -793,9 +827,11 @@ function HomeScreen({ activeSession, addFixedBreak, breakMs, completedMs, dashbo
         ? 'Inside office zone'
         : `${formatDistance(distanceMeters)} from office`;
   const timerStatus = activeSession ? 'Working' : onBreak ? 'On break' : 'Ready';
-  const hasDefaultBreak = todayRecord.fixedBreakMs >= DEFAULT_BREAK_MS;
+  const shiftRange = formatScheduleRange(user?.schedule);
   const timerStartCopy = activeSession
     ? `Started at ${formatClock(activeSession.in)}`
+    : onBreak && todayRecord.sessions.at(-1)?.out
+      ? `Break started at ${formatClock(todayRecord.sessions.at(-1).out)}`
     : lastClosed
       ? `Last session ended ${formatClock(lastClosed.out)}`
       : 'Ready to start';
@@ -843,11 +879,7 @@ function HomeScreen({ activeSession, addFixedBreak, breakMs, completedMs, dashbo
             </div>
           </div>
           <div className="shift-window">
-            <strong>09:30 AM - 06:30 PM</strong>
-            <button onClick={() => setActiveView('schedule')} type="button" aria-label="Edit work schedule">
-              General Shift
-              <Pencil size={14} />
-            </button>
+            <strong>{shiftRange}</strong>
           </div>
         </div>
 
@@ -857,16 +889,23 @@ function HomeScreen({ activeSession, addFixedBreak, breakMs, completedMs, dashbo
               <LogOut size={18} />
               Punch Out
             </button>
+          ) : onBreak ? (
+            <button className="primary-action" onClick={endBreak} type="button">
+              <Coffee size={18} />
+              End Break
+            </button>
           ) : (
             <button className="primary-action" onClick={punchIn} type="button">
               <Timer size={18} />
               Punch In
             </button>
           )}
-          <button className="secondary-action break-action" disabled={hasDefaultBreak} onClick={addFixedBreak} type="button">
-            <Coffee size={18} />
-            {hasDefaultBreak ? 'Break Marked' : 'Mark as Break'}
-          </button>
+          {activeSession ? (
+            <button className="secondary-action break-action" onClick={markBreak} type="button">
+              <Coffee size={18} />
+              Mark Break
+            </button>
+          ) : null}
 
           <button className="zone-status-card" onClick={() => setActiveView('location')} type="button">
             <MapPin size={18} />
@@ -1035,9 +1074,10 @@ function SummaryRow({ label, positive = false, value }) {
   );
 }
 
-function TimelineScreen({ records, today, todayRecord }) {
+function TimelineScreen({ records, today, todayRecord, user }) {
   const weekDays = getWeekDays(today);
   const events = getDailyEvents(todayRecord.sessions);
+  const scheduleDurationMs = calculateScheduleDurationMs(user?.schedule);
 
   return (
     <div className={`screen-stack timeline-screen ${Object.keys(records).length ? 'has-history' : 'no-history'}`}>
@@ -1058,6 +1098,19 @@ function TimelineScreen({ records, today, todayRecord }) {
             </div>
           );
         })}
+      </section>
+
+      <section className="timeline-shift-card">
+        <div>
+          <span className="eyebrow">Current shift</span>
+          <h2>{formatScheduleRange(user?.schedule)}</h2>
+          <p>Work window for today</p>
+        </div>
+        <div className="timeline-shift-grid">
+          <SummaryRow label="Gross Window" value={formatHours(scheduleDurationMs)} />
+          <SummaryRow label="Break Target" value="1h 00m" />
+          <SummaryRow label="Daily Target" value="8h 00m" />
+        </div>
       </section>
 
       <section className="timeline-card">
@@ -1279,11 +1332,12 @@ function ReportsScreen({ records, today }) {
 }
 
 function ProfileScreen({ clearAll, logout, setActiveView, theme, toggleTheme, user }) {
+  const nextThemeLabel = theme === 'dark' ? 'Change to Light Mode' : 'Change to Dark Mode';
   const items = [
     { icon: User, label: 'Personal Information', action: () => setActiveView('personal') },
     { icon: MapPin, label: 'Workplace and Location', action: () => setActiveView('location') },
     { icon: Clock3, label: 'Manual Time Entry', action: () => setActiveView('manual') },
-    { icon: Clock3, label: 'Work Schedule', meta: '9:00 AM - 6:00 PM', action: () => setActiveView('schedule') },
+    { icon: Clock3, label: 'Work Schedule', meta: formatScheduleRange(user.schedule), action: () => setActiveView('schedule') },
     { icon: Bell, label: 'Notifications', action: () => setActiveView('notifications') },
     { icon: Shield, label: 'Data and Privacy', action: () => setActiveView('privacy') },
     { icon: Download, label: 'Export Data', action: () => setActiveView('export') },
@@ -1315,8 +1369,8 @@ function ProfileScreen({ clearAll, logout, setActiveView, theme, toggleTheme, us
         })}
         <button className="theme-settings-row" onClick={toggleTheme} type="button" aria-pressed={theme === 'dark'}>
           {theme === 'dark' ? <Moon size={18} /> : <Sun size={18} />}
-          <span>Appearance</span>
-          <small>{theme === 'dark' ? 'Dark mode' : 'Light mode'}</small>
+          <span>{nextThemeLabel}</span>
+          <small>{theme === 'dark' ? 'Currently dark' : 'Currently light'}</small>
           <span className="settings-switch" aria-hidden="true">
             <i />
           </span>
@@ -1370,16 +1424,74 @@ function PersonalInformationScreen({ user }) {
   );
 }
 
-function WorkScheduleScreen() {
+function WorkScheduleScreen({ saveSchedule, user }) {
+  const [form, setForm] = useState(() => normalizeSchedule(user.schedule));
+  const [status, setStatus] = useState('');
+  const [error, setError] = useState('');
+  const durationMs = calculateScheduleDurationMs(form);
+
+  async function submit(event) {
+    event.preventDefault();
+    setError('');
+    setStatus('');
+
+    if (!isValidTimeInput(form.start) || !isValidTimeInput(form.end)) {
+      setError('Choose a valid start and end time.');
+      return;
+    }
+
+    if (durationMs <= 0) {
+      setError('End time must be after start time.');
+      return;
+    }
+
+    const result = await saveSchedule(form);
+    if (result.ok) {
+      setStatus('Work schedule saved.');
+    } else {
+      setError(result.message ?? 'Unable to save schedule.');
+    }
+  }
+
   return (
     <div className="detail-screen">
       <DetailCard icon={Clock3} title="Default Schedule">
-        <SummaryRow label="Work Window" value="9:00 AM - 6:00 PM" />
-        <SummaryRow label="Daily Target" value="8h 00m" />
-        <SummaryRow label="Week" value="Monday to Sunday" />
+        <form className="schedule-form" onSubmit={submit}>
+          <div className="schedule-time-grid">
+            <label className="schedule-field">
+              <span>Start time</span>
+              <input
+                onChange={(event) => setForm((current) => ({ ...current, start: event.target.value }))}
+                type="time"
+                value={form.start}
+              />
+            </label>
+            <label className="schedule-field">
+              <span>End time</span>
+              <input
+                onChange={(event) => setForm((current) => ({ ...current, end: event.target.value }))}
+                type="time"
+                value={form.end}
+              />
+            </label>
+          </div>
+          <section className="schedule-preview">
+            <SummaryRow label="Work Window" value={formatScheduleRange(form)} />
+            <SummaryRow label="Gross Window" value={formatHours(durationMs)} />
+            <SummaryRow label="Daily Target" value="8h 00m" />
+          </section>
+          {error ? <p className="location-status warning">{error}</p> : null}
+          {status ? <p className="location-status success">{status}</p> : null}
+          <button className="primary-action detail-primary" type="submit">
+            <Save size={18} />
+            Save Schedule
+          </button>
+        </form>
       </DetailCard>
       <DetailCard icon={Coffee} title="Break Handling">
-        <p className="detail-copy">When you punch out and return later, WorkPulse asks whether that gap should be counted as break time.</p>
+        <SummaryRow label="Daily Target" value="8h 00m" />
+        <SummaryRow label="Break Flow" value="Mark Break / End Break" />
+        <p className="detail-copy">Use Mark Break while punched in, then End Break when you return. WorkPulse calculates that gap separately from worked hours.</p>
       </DetailCard>
     </div>
   );
@@ -2306,7 +2418,7 @@ export default function App() {
   useEffect(() => {
     const insideWorkplace = distanceMeters !== null && distanceMeters <= WORKPLACE_RADIUS_METERS;
 
-    if (activeSession || !insideWorkplace) {
+    if (activeSession || onBreak || !insideWorkplace) {
       setArrivalPrompt(false);
     }
 
@@ -2314,10 +2426,10 @@ export default function App() {
       setArrivalDismissed(false);
     }
 
-    if (!activeSession && insideWorkplace && !arrivalDismissed) {
+    if (!activeSession && !onBreak && insideWorkplace && !arrivalDismissed) {
       setArrivalPrompt(true);
     }
-  }, [activeSession, arrivalDismissed, distanceMeters]);
+  }, [activeSession, arrivalDismissed, distanceMeters, onBreak]);
 
   useEffect(() => {
     const activeSessionId = activeSession?.in ? String(activeSession.in) : '';
@@ -2409,6 +2521,11 @@ export default function App() {
     const gapMs = previous ? now - previous.out : 0;
 
     setArrivalPrompt(false);
+
+    if (previous?.outReason === 'break') {
+      punchIn('break');
+      return;
+    }
 
     if (previous && gapMs > 60 * 1000) {
       setBreakPrompt({ gapMs });
@@ -2503,29 +2620,12 @@ export default function App() {
     }
   }
 
-  async function addFixedBreak() {
-    setActionError('');
+  async function markBreak() {
+    await punchOut('break');
+  }
 
-    if (isGuest) {
-      updateGuestToday((record) => ({
-        ...record,
-        fixedBreakMs: Math.max(Number(record.fixedBreakMs) || 0, DEFAULT_BREAK_MS),
-      }));
-      return { ok: true };
-    }
-
-    try {
-      const data = await apiRequest(`/api/records/${dateKey}/break`, {
-        method: 'PUT',
-        token,
-        body: { fixedBreakMs: DEFAULT_BREAK_MS },
-      });
-      setRecords(data.records ?? {});
-      return { ok: true };
-    } catch (error) {
-      setActionError(error.message);
-      return { ok: false };
-    }
+  async function endBreak() {
+    await punchIn('break');
   }
 
   async function answerBreakPrompt(isBreak) {
@@ -2692,6 +2792,36 @@ export default function App() {
     }
   }
 
+  async function saveSchedule(schedule) {
+    setActionError('');
+    const cleanSchedule = normalizeSchedule(schedule);
+
+    if (calculateScheduleDurationMs(cleanSchedule) <= 0) {
+      return { ok: false, message: 'End time must be after start time.' };
+    }
+
+    if (isGuest) {
+      setUser((current) => ({
+        ...(current ?? defaultGuestUser()),
+        schedule: cleanSchedule,
+      }));
+      return { ok: true };
+    }
+
+    try {
+      const data = await apiRequest('/api/me/schedule', {
+        method: 'PUT',
+        token,
+        body: cleanSchedule,
+      });
+      setUser(data.user);
+      return { ok: true };
+    } catch (error) {
+      setActionError(error.message);
+      return { ok: false, message: error.message };
+    }
+  }
+
   function logout() {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(GUEST_KEY);
@@ -2783,8 +2913,6 @@ export default function App() {
           onBack={closeDetailView}
           now={today}
           setActiveView={navigateView}
-          theme={theme}
-          toggleTheme={toggleTheme}
           user={user}
         />
 
@@ -2793,12 +2921,13 @@ export default function App() {
           {activeView === 'home' ? (
             <HomeScreen
               activeSession={activeSession}
-              addFixedBreak={addFixedBreak}
               breakMs={breakMs}
               completedMs={completedMs}
               dashboardOrder={dashboardOrder}
               distanceMeters={distanceMeters}
+              endBreak={endBreak}
               liveLocation={liveLocation}
+              markBreak={markBreak}
               now={now}
               onBreak={onBreak}
               punchIn={requestPunchIn}
@@ -2813,7 +2942,7 @@ export default function App() {
               weeklyMs={weeklyMs}
             />
           ) : null}
-          {activeView === 'timeline' ? <TimelineScreen records={records} today={today} todayRecord={todayRecord} /> : null}
+          {activeView === 'timeline' ? <TimelineScreen records={records} today={today} todayRecord={todayRecord} user={user} /> : null}
           {activeView === 'reports' ? <ReportsScreen records={records} today={today} /> : null}
           {activeView === 'profile' ? <ProfileScreen clearAll={requestClearAll} logout={logout} setActiveView={navigateView} theme={theme} toggleTheme={toggleTheme} user={user} /> : null}
           {activeView === 'notifications' ? <NotificationsScreen /> : null}
@@ -2831,7 +2960,7 @@ export default function App() {
           ) : null}
           {activeView === 'manual' ? <ManualTimeScreen dateKey={dateKey} saveManualSession={saveManualSession} /> : null}
           {activeView === 'personal' ? <PersonalInformationScreen user={user} /> : null}
-          {activeView === 'schedule' ? <WorkScheduleScreen /> : null}
+          {activeView === 'schedule' ? <WorkScheduleScreen saveSchedule={saveSchedule} user={user} /> : null}
           {activeView === 'privacy' ? <DataPrivacyScreen clearAll={requestClearAll} isGuest={isGuest} /> : null}
           {activeView === 'export' ? <ExportDataScreen records={records} user={user} /> : null}
           {activeView === 'support' ? <HelpSupportScreen /> : null}
