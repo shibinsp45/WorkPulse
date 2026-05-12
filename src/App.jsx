@@ -37,7 +37,9 @@ const ONBOARDING_KEY = 'workpulse-onboarding-v2-done';
 const THEME_KEY = 'workpulse-theme';
 const DASHBOARD_ORDER_KEY = 'workpulse-dashboard-order';
 const TARGET_MS = 8 * 60 * 60 * 1000;
+const DEFAULT_BREAK_MS = 60 * 60 * 1000;
 const WORKPLACE_RADIUS_METERS = 150;
+const WORKPLACE_AWAY_REMINDER_METERS = 500;
 const WORKPLACE = 'Hilite Business Park';
 const OLD_WORKPLACE = 'Technopark Phase 1';
 const DETAIL_VIEWS = new Set(['notifications', 'location', 'manual', 'personal', 'schedule', 'privacy', 'export', 'support']);
@@ -103,6 +105,11 @@ function defaultGuestUser() {
 function getWorkplaceName(value) {
   const cleanValue = String(value ?? '').trim();
   return !cleanValue || cleanValue === OLD_WORKPLACE ? WORKPLACE : cleanValue;
+}
+
+function getNotificationPermission() {
+  if (typeof window === 'undefined' || !('Notification' in window)) return 'unsupported';
+  return Notification.permission;
 }
 
 function readGuestUser() {
@@ -187,6 +194,7 @@ function getWeekDays(date) {
 
 function normalizeRecord(record) {
   return {
+    fixedBreakMs: Math.max(0, Number(record?.fixedBreakMs) || 0),
     sessions: [...(record?.sessions ?? [])].sort((a, b) => Number(a.in) - Number(b.in)),
     notes: record?.notes ?? '',
     focus: record?.focus ?? [],
@@ -206,26 +214,35 @@ function getTodayRecord(records, dateKey) {
 }
 
 function calculateWorkedMs(record, now) {
-  return normalizeRecord(record).sessions.reduce((total, session) => {
+  const cleanRecord = normalizeRecord(record);
+  const sessionMs = cleanRecord.sessions.reduce((total, session) => {
     const out = session.out ?? now;
     return total + Math.max(0, out - session.in);
   }, 0);
+
+  return Math.max(0, sessionMs - cleanRecord.fixedBreakMs);
 }
 
 function calculateCompletedMs(record) {
-  return normalizeRecord(record).sessions.reduce((total, session) => {
+  const cleanRecord = normalizeRecord(record);
+  const sessionMs = cleanRecord.sessions.reduce((total, session) => {
     if (!session.out) return total;
     return total + Math.max(0, session.out - session.in);
   }, 0);
+
+  return Math.max(0, sessionMs - cleanRecord.fixedBreakMs);
 }
 
 function calculateBreakMs(record) {
-  return normalizeRecord(record).sessions.reduce((total, session, index, sessions) => {
+  const cleanRecord = normalizeRecord(record);
+  const trackedBreakMs = cleanRecord.sessions.reduce((total, session, index, sessions) => {
     if (index === 0) return total;
     const previous = sessions[index - 1];
     if (!previous.out || previous.outReason !== 'break') return total;
     return total + Math.max(0, session.in - previous.out);
   }, 0);
+
+  return trackedBreakMs + cleanRecord.fixedBreakMs;
 }
 
 function getTimestamp(value) {
@@ -456,6 +473,45 @@ function formatDistance(meters) {
   if (meters === null) return 'Not available';
   if (meters < 1000) return `${meters} m away`;
   return `${(meters / 1000).toFixed(1)} km away`;
+}
+
+function formatLocationAge(updatedAt, now = Date.now()) {
+  if (!updatedAt) return 'Live location pending';
+
+  const minutes = Math.max(0, Math.floor((now - updatedAt) / 60000));
+  if (minutes < 1) return 'Updated just now';
+  return `Updated ${minutes} min ago`;
+}
+
+async function showWorkPulseNotification(title, options = {}) {
+  if (typeof window === 'undefined' || !('Notification' in window) || Notification.permission !== 'granted') {
+    return false;
+  }
+
+  const notificationOptions = {
+    badge: './icons/icon-192.png',
+    icon: './icons/icon-192.png',
+    ...options,
+  };
+
+  try {
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      const registration = await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise((resolve) => window.setTimeout(() => resolve(null), 800)),
+      ]);
+
+      if (registration?.showNotification) {
+        await registration.showNotification(title, notificationOptions);
+        return true;
+      }
+    }
+
+    new Notification(title, notificationOptions);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function parseLocalDateTime(date, time) {
@@ -719,7 +775,7 @@ function DashboardPanel({ children, dragId, dropId, editingLayout, id, moveSecti
   );
 }
 
-function HomeScreen({ activeSession, breakMs, completedMs, dashboardOrder, distanceMeters, liveLocation, onBreak, punchIn, punchOut, records, setActiveView, setDashboardOrder, today, todayRecord, totalMs, user, weeklyMs }) {
+function HomeScreen({ activeSession, addFixedBreak, breakMs, completedMs, dashboardOrder, distanceMeters, liveLocation, now, onBreak, punchIn, punchOut, records, setActiveView, setDashboardOrder, today, todayRecord, totalMs, user, weeklyMs }) {
   const remainingMs = Math.max(0, TARGET_MS - totalMs);
   const overtimeMs = Math.max(0, totalMs - TARGET_MS);
   const lastClosed = todayRecord.sessions.filter((session) => session.out && session.outReason !== 'break').at(-1);
@@ -727,12 +783,22 @@ function HomeScreen({ activeSession, breakMs, completedMs, dashboardOrder, dista
   const weeklySeries = getWeeklyHoursSeries(records, today);
   const weeklyAverage = weeklySeries.length ? weeklyMs / weeklySeries.length : 0;
   const attendancePercent = Math.min(100, Math.round((completedMs / TARGET_MS) * 100));
-  const firstCheckIn = todayRecord.sessions[0]?.in;
-  const activeShiftCopy = activeSession
-    ? `${formatClock(activeSession.in)} - now`
-    : firstCheckIn
-      ? `${formatClock(firstCheckIn)} - ${lastClosed ? formatClock(lastClosed.out) : '--'}`
-      : '09:30 AM - 06:30 PM';
+  const hasSavedLocation = Boolean(user?.location);
+  const insideOffice = distanceMeters !== null && distanceMeters <= WORKPLACE_RADIUS_METERS;
+  const locationStatus = !hasSavedLocation
+    ? 'Save work location'
+    : !liveLocation
+      ? 'Waiting for live location'
+      : insideOffice
+        ? 'Inside office zone'
+        : `${formatDistance(distanceMeters)} from office`;
+  const timerStatus = activeSession ? 'Working' : onBreak ? 'On break' : 'Ready';
+  const hasDefaultBreak = todayRecord.fixedBreakMs >= DEFAULT_BREAK_MS;
+  const timerStartCopy = activeSession
+    ? `Started at ${formatClock(activeSession.in)}`
+    : lastClosed
+      ? `Last session ended ${formatClock(lastClosed.out)}`
+      : 'Ready to start';
   const dashboardTasks = [
     { id: 'notes', label: notePreview ? 'Review today notes' : 'Add a work note', meta: notePreview ? 'Low' : 'High', done: Boolean(notePreview) },
     { id: 'punch', label: activeSession ? 'Complete active session' : 'Start or confirm work session', meta: activeSession ? 'High' : 'Medium', done: Boolean(lastClosed) },
@@ -762,76 +828,52 @@ function HomeScreen({ activeSession, breakMs, completedMs, dashboardOrder, dista
   }
 
   const sections = {
-    hero: activeSession ? (
-      <section className="dashboard-live-card">
-        <div className="timer-orbit active">
-          <div className="timer-core">
-            <strong>{formatTimer(totalMs)}</strong>
-            <span>Working now</span>
-            <button aria-label="Punch out" onClick={punchOut} type="button">
+    hero: (
+      <section className={`dashboard-live-card ${activeSession ? 'is-working' : 'is-ready'}`}>
+        <div className="live-card-head">
+          <span>Live Timer</span>
+          <strong>{timerStatus}</strong>
+        </div>
+
+        <div className="live-timer-column">
+          <div className={activeSession ? 'timer-orbit active' : 'timer-orbit'}>
+            <div className="timer-core">
+              <strong>{formatTimer(totalMs)}</strong>
+              <span>{timerStartCopy}</span>
+            </div>
+          </div>
+          <div className="shift-window">
+            <strong>09:30 AM - 06:30 PM</strong>
+            <button onClick={() => setActiveView('schedule')} type="button" aria-label="Edit work schedule">
+              General Shift
+              <Pencil size={14} />
+            </button>
+          </div>
+        </div>
+
+        <div className="live-control-column">
+          {activeSession ? (
+            <button className="primary-action" onClick={punchOut} type="button">
               <LogOut size={18} />
+              Punch Out
             </button>
-          </div>
-        </div>
-        <div className="shift-panel">
-          <span className="eyebrow green">Live Timer</span>
-          <h2>{formatTimer(totalMs)}</h2>
-          <p>Working since {formatClock(activeSession.in)}</p>
-          <div className="shift-info-card">
-            <Clock3 size={18} />
-            <div>
-              <span>Current Shift</span>
-              <strong>{activeShiftCopy}</strong>
-              <small>8h 00m target</small>
-            </div>
-          </div>
-          <div className="shift-info-card">
-            <MapPin size={18} />
-            <div>
-              <span>{getWorkplaceName(user?.workplace)}</span>
-              <strong>{liveLocation ? 'Live location active' : 'Location ready'}</strong>
-              <small>{formatDistance(distanceMeters)}</small>
-            </div>
-          </div>
-          <button className="primary-action danger" onClick={punchOut} type="button">
-            Punch Out
-          </button>
-        </div>
-      </section>
-    ) : (
-      <section className="dashboard-live-card">
-        <div className="timer-orbit">
-          <div className="timer-core">
-            <strong>{formatTimer(totalMs)}</strong>
-            <span>{lastClosed ? 'Tracked today' : 'Ready to start'}</span>
-            <button aria-label="Punch in" onClick={punchIn} type="button">
+          ) : (
+            <button className="primary-action" onClick={punchIn} type="button">
               <Timer size={18} />
+              Punch In
             </button>
-          </div>
-        </div>
-        <div className="shift-panel">
-          <span className="eyebrow">Live Timer</span>
-          <h2>{onBreak ? 'Break in progress' : lastClosed ? 'You are checked out' : 'Ready to start'}</h2>
-          <p>{onBreak ? 'Punch in when you are back. We will count the gap as break time.' : lastClosed ? 'Punch in again to continue your hours.' : 'Tap punch in to start tracking your work hours.'}</p>
-          <div className="shift-info-card">
-            <Clock3 size={18} />
-            <div>
-              <span>Current Shift</span>
-              <strong>{activeShiftCopy}</strong>
-              <small>General shift</small>
-            </div>
-          </div>
-          <div className="shift-info-card">
+          )}
+          <button className="secondary-action break-action" disabled={hasDefaultBreak} onClick={addFixedBreak} type="button">
+            <Coffee size={18} />
+            {hasDefaultBreak ? 'Break Marked' : 'Mark as Break'}
+          </button>
+
+          <button className="zone-status-card" onClick={() => setActiveView('location')} type="button">
             <MapPin size={18} />
             <div>
-              <span>{getWorkplaceName(user?.workplace)}</span>
-              <strong>{liveLocation ? 'Live location active' : 'Location ready'}</strong>
-              <small>{formatDistance(distanceMeters)}</small>
+              <strong className={insideOffice ? 'green' : ''}>{locationStatus}</strong>
+              <span>{formatLocationAge(liveLocation?.updatedAt, now)}</span>
             </div>
-          </div>
-          <button className="primary-action" onClick={punchIn} type="button">
-            <Timer size={18} />
-            Punch In
           </button>
         </div>
       </section>
@@ -1236,7 +1278,7 @@ function ReportsScreen({ records, today }) {
   );
 }
 
-function ProfileScreen({ clearAll, logout, setActiveView, user }) {
+function ProfileScreen({ clearAll, logout, setActiveView, theme, toggleTheme, user }) {
   const items = [
     { icon: User, label: 'Personal Information', action: () => setActiveView('personal') },
     { icon: MapPin, label: 'Workplace and Location', action: () => setActiveView('location') },
@@ -1271,6 +1313,14 @@ function ProfileScreen({ clearAll, logout, setActiveView, user }) {
             </button>
           );
         })}
+        <button className="theme-settings-row" onClick={toggleTheme} type="button" aria-pressed={theme === 'dark'}>
+          {theme === 'dark' ? <Moon size={18} /> : <Sun size={18} />}
+          <span>Appearance</span>
+          <small>{theme === 'dark' ? 'Dark mode' : 'Light mode'}</small>
+          <span className="settings-switch" aria-hidden="true">
+            <i />
+          </span>
+        </button>
         <button onClick={() => setActiveView('notes')} type="button">
           <FileText size={18} />
           <span>Work Notes</span>
@@ -1537,11 +1587,14 @@ function ManualTimeScreen({ dateKey, saveManualSession }) {
   );
 }
 
-function LocationScreen({ saveLocation, user }) {
+function LocationScreen({ distanceMeters, liveLocation, locationError, notificationPermission, requestNotificationAccess, saveLocation, user }) {
   const [workplace, setWorkplace] = useState(getWorkplaceName(user.workplace));
   const [coords, setCoords] = useState(user.location ?? null);
   const [status, setStatus] = useState('');
   const hasPinnedLocation = Boolean(coords);
+  const hasLiveLocation = Boolean(liveLocation);
+  const insideOffice = distanceMeters !== null && distanceMeters <= WORKPLACE_RADIUS_METERS;
+  const awayReminderReady = notificationPermission === 'granted';
 
   function fetchLocation() {
     if (!navigator.geolocation) {
@@ -1549,7 +1602,7 @@ function LocationScreen({ saveLocation, user }) {
       return;
     }
 
-    setStatus('Fetching location...');
+    setStatus('Allow the browser location prompt to pin your current workplace.');
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const nextCoords = {
@@ -1557,8 +1610,10 @@ function LocationScreen({ saveLocation, user }) {
           longitude: Number(position.coords.longitude.toFixed(6)),
         };
         setCoords(nextCoords);
-        setWorkplace(`Pinned Location (${nextCoords.latitude}, ${nextCoords.longitude})`);
-        setStatus('Live location fetched and pinned on the map.');
+        if (!workplace.trim()) {
+          setWorkplace('My Workplace');
+        }
+        setStatus('Current location fetched. Add a custom name and save it.');
       },
       () => {
         setStatus('Unable to fetch location. Please allow location access or add it manually.');
@@ -1574,7 +1629,25 @@ function LocationScreen({ saveLocation, user }) {
           <MapPin size={38} />
         </div>
         <h2>Work Location</h2>
-        <p>Add your workplace manually or let the browser fetch your current location.</p>
+        <p>Use your current location, give it a custom name, and WorkPulse will remind you if you move 500 m away while punched in.</p>
+      </section>
+
+      <section className="location-status-grid">
+        <div className="location-status-card">
+          <span>Saved place</span>
+          <strong>{getWorkplaceName(workplace)}</strong>
+          <small>{hasPinnedLocation ? 'Pinned for punch reminders' : 'No coordinates saved yet'}</small>
+        </div>
+        <div className="location-status-card">
+          <span>Live position</span>
+          <strong>{hasLiveLocation ? formatLocationAge(liveLocation.updatedAt) : 'Waiting for access'}</strong>
+          <small>{distanceMeters === null ? 'Distance unavailable' : formatDistance(distanceMeters)}</small>
+        </div>
+        <div className={awayReminderReady ? 'location-status-card good' : 'location-status-card warning'}>
+          <span>Away reminder</span>
+          <strong>{awayReminderReady ? 'Push alert enabled' : 'Enable alerts'}</strong>
+          <small>{insideOffice ? 'Inside office zone' : 'Alerts trigger after 500 m'}</small>
+        </div>
       </section>
 
       <section className={hasPinnedLocation ? 'map-preview pinned' : 'map-preview'}>
@@ -1589,7 +1662,7 @@ function LocationScreen({ saveLocation, user }) {
         </div>
         <div className="map-caption">
           <strong>{hasPinnedLocation ? 'Location pinned on map' : 'No map pin yet'}</strong>
-          <p>{hasPinnedLocation ? `${coords.latitude}, ${coords.longitude}` : 'Fetch live location to drop your workplace pin.'}</p>
+          <p>{hasPinnedLocation ? `${coords.latitude}, ${coords.longitude}` : 'Tap current location to drop your workplace pin.'}</p>
         </div>
       </section>
 
@@ -1606,17 +1679,22 @@ function LocationScreen({ saveLocation, user }) {
         <section className="coordinate-card">
           <SummaryRow label="Latitude" value={coords.latitude} />
           <SummaryRow label="Longitude" value={coords.longitude} />
+          <SummaryRow label="Punch-out alert" value={`After ${WORKPLACE_AWAY_REMINDER_METERS} m`} />
         </section>
       ) : null}
 
-      {status ? <p className="location-status">{status}</p> : null}
+      {locationError ? <p className="location-status warning">{locationError}</p> : null}
+      {status ? <p className="location-status success">{status}</p> : null}
 
       <div className="location-actions">
         <button className="secondary-action" onClick={fetchLocation} type="button">
-          Fetch Live Location
+          Use Current Location
+        </button>
+        <button className="secondary-action" onClick={requestNotificationAccess} type="button">
+          Enable Alerts
         </button>
         <button className="primary-action" onClick={() => saveLocation(workplace, coords)} type="button">
-          Save Pinned Location
+          Save Location
         </button>
       </div>
     </div>
@@ -2006,6 +2084,30 @@ function ArrivalPrompt({ distanceMeters, onDismiss, onPunchIn, workplace }) {
   );
 }
 
+function AwayPrompt({ distanceMeters, onDismiss, onPunchOut, workplace }) {
+  return (
+    <div className="modal-backdrop">
+      <section className="confirm-card">
+        <div className="confirm-icon danger">
+          <LogOut size={24} />
+        </div>
+        <h2>Forgot to punch out?</h2>
+        <p>
+          You are <strong>{formatDistance(distanceMeters)}</strong> from {workplace} while still punched in.
+        </p>
+        <div className="confirm-actions">
+          <button className="primary-action danger" onClick={onPunchOut} type="button">
+            Punch Out
+          </button>
+          <button className="secondary-action" onClick={onDismiss} type="button">
+            Still Working
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function ClearRecordsPrompt({ onCancel, onConfirm }) {
   return (
     <div className="modal-backdrop">
@@ -2084,7 +2186,10 @@ export default function App() {
   const [arrivalDismissed, setArrivalDismissed] = useState(false);
   const [liveLocation, setLiveLocation] = useState(null);
   const [locationError, setLocationError] = useState('');
+  const [notificationPermission, setNotificationPermission] = useState(() => getNotificationPermission());
+  const [awayPrompt, setAwayPrompt] = useState(false);
   const [clearPromptOpen, setClearPromptOpen] = useState(false);
+  const awayNotificationRef = useRef('');
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
@@ -2120,6 +2225,7 @@ export default function App() {
           latitude: Number(position.coords.latitude.toFixed(6)),
           longitude: Number(position.coords.longitude.toFixed(6)),
           accuracy: Math.round(position.coords.accuracy),
+          updatedAt: Date.now(),
         });
         setLocationError('');
       },
@@ -2212,6 +2318,35 @@ export default function App() {
       setArrivalPrompt(true);
     }
   }, [activeSession, arrivalDismissed, distanceMeters]);
+
+  useEffect(() => {
+    const activeSessionId = activeSession?.in ? String(activeSession.in) : '';
+    const outsideWorkplace = distanceMeters !== null && distanceMeters > WORKPLACE_AWAY_REMINDER_METERS;
+
+    if (!activeSession) {
+      awayNotificationRef.current = '';
+      setAwayPrompt(false);
+      return;
+    }
+
+    if (!outsideWorkplace) {
+      setAwayPrompt(false);
+      return;
+    }
+
+    if (awayNotificationRef.current === activeSessionId) {
+      return;
+    }
+
+    awayNotificationRef.current = activeSessionId;
+    setAwayPrompt(true);
+    navigator.vibrate?.(40);
+    void showWorkPulseNotification('Forgot to punch out?', {
+      body: `You are ${formatDistance(distanceMeters)} from ${getWorkplaceName(user?.workplace)} while still punched in.`,
+      data: { view: 'home' },
+      tag: `workpulse-away-${activeSessionId}`,
+    });
+  }, [activeSession, distanceMeters, user?.workplace]);
 
   function updateGuestToday(updater) {
     setRecords((current) => {
@@ -2327,8 +2462,9 @@ export default function App() {
     }
   }
 
-  async function punchOut() {
+  async function punchOut(reason = 'checkout') {
     setActionError('');
+    const cleanReason = reason === 'break' ? 'break' : 'checkout';
 
     if (isGuest) {
       if (!activeSession) {
@@ -2344,7 +2480,7 @@ export default function App() {
           sessions[activeIndex] = {
             ...sessions[activeIndex],
             out: Date.now(),
-            outReason: 'checkout',
+            outReason: cleanReason,
           };
         }
 
@@ -2358,12 +2494,37 @@ export default function App() {
       const data = await apiRequest('/api/punch/out', {
         method: 'POST',
         token,
-        body: { dateKey, reason: 'checkout', time: Date.now() },
+        body: { dateKey, reason: cleanReason, time: Date.now() },
       });
       setRecords(data.records ?? {});
       setArrivalDismissed(false);
     } catch (error) {
       setActionError(error.message);
+    }
+  }
+
+  async function addFixedBreak() {
+    setActionError('');
+
+    if (isGuest) {
+      updateGuestToday((record) => ({
+        ...record,
+        fixedBreakMs: Math.max(Number(record.fixedBreakMs) || 0, DEFAULT_BREAK_MS),
+      }));
+      return { ok: true };
+    }
+
+    try {
+      const data = await apiRequest(`/api/records/${dateKey}/break`, {
+        method: 'PUT',
+        token,
+        body: { fixedBreakMs: DEFAULT_BREAK_MS },
+      });
+      setRecords(data.records ?? {});
+      return { ok: true };
+    } catch (error) {
+      setActionError(error.message);
+      return { ok: false };
     }
   }
 
@@ -2447,6 +2608,28 @@ export default function App() {
     } catch (error) {
       setActionError(error.message);
     }
+  }
+
+  async function requestNotificationAccess() {
+    setActionError('');
+
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      setNotificationPermission('unsupported');
+      setActionError('Push alerts are not supported in this browser.');
+      return 'unsupported';
+    }
+
+    const permission = Notification.permission === 'default'
+      ? await Notification.requestPermission()
+      : Notification.permission;
+
+    setNotificationPermission(permission);
+
+    if (permission !== 'granted') {
+      setActionError('Notification permission is not enabled. WorkPulse will still show in-app reminders.');
+    }
+
+    return permission;
   }
 
   function requestClearAll() {
@@ -2610,11 +2793,13 @@ export default function App() {
           {activeView === 'home' ? (
             <HomeScreen
               activeSession={activeSession}
+              addFixedBreak={addFixedBreak}
               breakMs={breakMs}
               completedMs={completedMs}
               dashboardOrder={dashboardOrder}
               distanceMeters={distanceMeters}
               liveLocation={liveLocation}
+              now={now}
               onBreak={onBreak}
               punchIn={requestPunchIn}
               punchOut={punchOut}
@@ -2630,10 +2815,20 @@ export default function App() {
           ) : null}
           {activeView === 'timeline' ? <TimelineScreen records={records} today={today} todayRecord={todayRecord} /> : null}
           {activeView === 'reports' ? <ReportsScreen records={records} today={today} /> : null}
-          {activeView === 'profile' ? <ProfileScreen clearAll={requestClearAll} logout={logout} setActiveView={navigateView} user={user} /> : null}
+          {activeView === 'profile' ? <ProfileScreen clearAll={requestClearAll} logout={logout} setActiveView={navigateView} theme={theme} toggleTheme={toggleTheme} user={user} /> : null}
           {activeView === 'notifications' ? <NotificationsScreen /> : null}
           {activeView === 'notes' ? <NotesScreen record={todayRecord} saveNotes={saveNotes} /> : null}
-          {activeView === 'location' ? <LocationScreen saveLocation={saveLocation} user={user} /> : null}
+          {activeView === 'location' ? (
+            <LocationScreen
+              distanceMeters={distanceMeters}
+              liveLocation={liveLocation}
+              locationError={locationError}
+              notificationPermission={notificationPermission}
+              requestNotificationAccess={requestNotificationAccess}
+              saveLocation={saveLocation}
+              user={user}
+            />
+          ) : null}
           {activeView === 'manual' ? <ManualTimeScreen dateKey={dateKey} saveManualSession={saveManualSession} /> : null}
           {activeView === 'personal' ? <PersonalInformationScreen user={user} /> : null}
           {activeView === 'schedule' ? <WorkScheduleScreen /> : null}
@@ -2645,6 +2840,17 @@ export default function App() {
         <BottomNav activeView={activeView} setActiveView={navigateView} />
         {breakPrompt ? <BreakPrompt gapMs={breakPrompt.gapMs} onAnswer={answerBreakPrompt} /> : null}
         {clearPromptOpen ? <ClearRecordsPrompt onCancel={() => setClearPromptOpen(false)} onConfirm={confirmClearAll} /> : null}
+        {awayPrompt && !breakPrompt && !clearPromptOpen ? (
+          <AwayPrompt
+            distanceMeters={distanceMeters}
+            onDismiss={() => setAwayPrompt(false)}
+            onPunchOut={() => {
+              setAwayPrompt(false);
+              void punchOut();
+            }}
+            workplace={getWorkplaceName(user?.workplace)}
+          />
+        ) : null}
         {arrivalPrompt && !breakPrompt && !clearPromptOpen ? (
           <ArrivalPrompt
             distanceMeters={distanceMeters}

@@ -14,6 +14,7 @@ const JWT_SECRET = process.env.JWT_SECRET ?? 'workpulse-local-dev-secret';
 const PORT = process.env.PORT ?? 4000;
 const WORKPLACE = 'Hilite Business Park';
 const OLD_WORKPLACE = 'Technopark Phase 1';
+const DEFAULT_BREAK_MS = 60 * 60 * 1000;
 
 const app = express();
 
@@ -65,6 +66,7 @@ function sortSessions(sessions) {
 
 function normalizeRecord(record) {
   return {
+    fixedBreakMs: Math.max(0, Number(record?.fixedBreakMs) || 0),
     sessions: sortSessions(record?.sessions ?? []),
     notes: record?.notes ?? '',
     focus: record?.focus ?? [],
@@ -289,6 +291,22 @@ app.put('/api/records/:date/notes', requireAuth, async (request, response) => {
   record.notes = String(request.body.notes ?? '');
   record.focus = Array.isArray(request.body.focus) ? request.body.focus : [];
   user.records = { ...(user.records ?? {}), [request.params.date]: record };
+  updateUser(request.store, user);
+  await writeStore(request.store);
+
+  response.json({ records: user.records, record });
+});
+
+app.put('/api/records/:date/break', requireAuth, async (request, response) => {
+  const user = request.user;
+  const date = String(request.params.date ?? todayKey());
+  const record = normalizeRecord(user.records?.[date]);
+  const requestedBreakMs = Number(request.body.fixedBreakMs);
+
+  record.fixedBreakMs = Number.isFinite(requestedBreakMs)
+    ? Math.max(0, requestedBreakMs)
+    : DEFAULT_BREAK_MS;
+  user.records = { ...(user.records ?? {}), [date]: record };
   updateUser(request.store, user);
   await writeStore(request.store);
 
