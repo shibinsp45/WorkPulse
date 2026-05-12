@@ -874,8 +874,6 @@ function HomeScreen({ activeSession, breakMs, completedMs, dashboardOrder, dista
         <MetricCard icon={Coffee} label="Break Time" value={formatHours(breakMs)} hint="Away time" />
         <MetricCard icon={Timer} label="Remaining" value={formatHours(remainingMs)} hint="Target left" />
         <MetricCard icon={CircleAlert} label="Overtime" value={formatHours(overtimeMs)} hint="Today" />
-        <MetricCard icon={CalendarDays} label="Weekly Total" value={formatHours(weeklyMs)} hint="Mon to Sun" />
-        <MetricCard icon={CheckCircle2} label="Attendance" value={`${attendancePercent}%`} hint="This week" />
       </section>
     ),
     weekly: (
