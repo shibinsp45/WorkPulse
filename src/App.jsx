@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   BarChart3,
@@ -628,11 +628,51 @@ function ManualTimeShortcut({ compact = false, setActiveView }) {
   );
 }
 
-function DashboardPanel({ children, dragId, dropId, editingLayout, id, moveSection, setDragId, setDropId }) {
+function DashboardPanel({ children, dragId, dropId, editingLayout, id, moveSection, onLongPressUnlock, setDragId, setDropId }) {
+  const longPressTimer = useRef(null);
+  const pressStart = useRef(null);
+
+  function clearLongPress() {
+    if (longPressTimer.current) {
+      window.clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+
+    pressStart.current = null;
+  }
+
+  function startLongPress(event) {
+    if (editingLayout || (event.pointerType === 'mouse' && event.button !== 0)) return;
+    if (event.target instanceof Element && event.target.closest('button, a, input, textarea, select, label')) return;
+
+    pressStart.current = { x: event.clientX, y: event.clientY };
+    longPressTimer.current = window.setTimeout(() => {
+      longPressTimer.current = null;
+      onLongPressUnlock();
+      if (navigator.vibrate) navigator.vibrate(18);
+    }, 650);
+  }
+
+  function cancelLongPressOnMove(event) {
+    if (!pressStart.current) return;
+
+    const movedX = Math.abs(event.clientX - pressStart.current.x);
+    const movedY = Math.abs(event.clientY - pressStart.current.y);
+
+    if (movedX > 10 || movedY > 10) {
+      clearLongPress();
+    }
+  }
+
+  useEffect(() => clearLongPress, []);
+
   return (
     <div
       className={`home-panel panel-${id}${editingLayout ? ' can-drag' : ' layout-locked'}${dragId === id ? ' dragging' : ''}${dropId === id ? ' drop-target' : ''}`}
       draggable={editingLayout}
+      onContextMenu={(event) => {
+        if (!editingLayout) event.preventDefault();
+      }}
       onDragEnd={() => {
         setDragId('');
         setDropId('');
@@ -661,6 +701,11 @@ function DashboardPanel({ children, dragId, dropId, editingLayout, id, moveSecti
         setDragId('');
         setDropId('');
       }}
+      onPointerCancel={clearLongPress}
+      onPointerDown={startLongPress}
+      onPointerLeave={clearLongPress}
+      onPointerMove={cancelLongPressOnMove}
+      onPointerUp={clearLongPress}
     >
       <div className="panel-drag-handle" aria-hidden={!editingLayout} title="Drag to reorder">
         <GripVertical size={16} />
@@ -797,10 +842,25 @@ function HomeScreen({ activeSession, breakMs, completedMs, dashboardOrder, dista
 
   return (
     <div className={`screen-stack home-stack${editingLayout ? ' layout-editing' : ' layout-locked'}`}>
+      {orderedSections.map((sectionId) => (
+        <DashboardPanel
+          dragId={dragId}
+          dropId={dropId}
+          editingLayout={editingLayout}
+          id={sectionId}
+          key={sectionId}
+          moveSection={moveSection}
+          onLongPressUnlock={() => setEditingLayout(true)}
+          setDragId={setDragId}
+          setDropId={setDropId}
+        >
+          {sections[sectionId]}
+        </DashboardPanel>
+      ))}
       <div className="layout-toolbar">
         <div>
           <span className="eyebrow">Dashboard layout</span>
-          <strong>{editingLayout ? 'Drag cards to reorder' : 'Cards are locked'}</strong>
+          <strong>{editingLayout ? 'Drag cards, then lock' : 'Long press a card to unlock'}</strong>
         </div>
         <button
           aria-pressed={editingLayout}
@@ -815,20 +875,6 @@ function HomeScreen({ activeSession, breakMs, completedMs, dashboardOrder, dista
           {editingLayout ? 'Lock' : 'Edit'}
         </button>
       </div>
-      {orderedSections.map((sectionId) => (
-        <DashboardPanel
-          dragId={dragId}
-          dropId={dropId}
-          editingLayout={editingLayout}
-          id={sectionId}
-          key={sectionId}
-          moveSection={moveSection}
-          setDragId={setDragId}
-          setDropId={setDropId}
-        >
-          {sections[sectionId]}
-        </DashboardPanel>
-      ))}
     </div>
   );
 }
@@ -848,8 +894,7 @@ function TimelineScreen({ records, today, todayRecord }) {
 
   return (
     <div className={`screen-stack timeline-screen ${Object.keys(records).length ? 'has-history' : 'no-history'}`}>
-      <div className="month-title">
-        <h2>Timeline</h2>
+      <div className="timeline-tools">
         <button type="button" aria-label="Open calendar">
           <CalendarDays size={18} />
         </button>
@@ -1895,7 +1940,6 @@ function BottomNav({ activeView, setActiveView }) {
         <WorkPulseLogo compact />
         <div>
           <strong>WorkPulse</strong>
-          <span>Time dashboard</span>
         </div>
       </div>
       {items.map((item) => {
