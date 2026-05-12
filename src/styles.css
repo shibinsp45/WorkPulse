@@ -727,6 +727,10 @@ button:disabled {
   box-shadow: 0 10px 24px rgba(17, 24, 39, 0.05);
 }
 
+.layout-locked > .layout-toolbar {
+  display: none;
+}
+
 .layout-toolbar div {
   display: grid;
   min-width: 0;
@@ -1144,9 +1148,9 @@ button:disabled {
   grid-template-areas:
     "head head"
     "timer controls";
-  grid-template-columns: minmax(240px, 0.9fr) minmax(240px, 1fr);
+  grid-template-columns: minmax(210px, 1fr) minmax(210px, 0.85fr);
   align-items: center;
-  gap: 14px 24px;
+  gap: 14px 18px;
   padding: 18px;
 }
 
@@ -1190,13 +1194,13 @@ button:disabled {
   align-content: center;
   gap: 12px;
   min-width: 0;
-  width: min(320px, 100%);
+  width: min(280px, 100%);
   justify-self: stretch;
 }
 
 .timer-orbit {
   display: grid;
-  width: min(270px, 100%);
+  width: min(240px, 100%);
   aspect-ratio: 1;
   place-items: center;
   justify-self: center;
@@ -3717,11 +3721,11 @@ button:disabled {
   }
 
   .app-shell .home-stack .home-panel.panel-hero {
-    grid-column: span 5;
+    grid-column: span 6;
   }
 
   .app-shell .home-stack .home-panel.panel-quick {
-    grid-column: span 7;
+    grid-column: span 6;
   }
 
   .app-shell .home-stack .home-panel.panel-metrics {
@@ -3937,10 +3941,9 @@ button:disabled {
 
   .app-shell .dashboard-live-card {
     grid-template-areas:
-      "head"
-      "timer"
-      "controls";
-    grid-template-columns: 1fr;
+      "head head"
+      "timer controls";
+    grid-template-columns: minmax(210px, 1fr) minmax(210px, 0.85fr);
   }
 
   .app-shell .dashboard-metrics-grid {
@@ -4141,15 +4144,25 @@ button:disabled {
       "timer"
       "controls";
     grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 16px;
   }
 
   .timer-orbit {
-    width: min(230px, 78vw);
+    width: min(200px, 72vw);
   }
 
   .live-control-column .primary-action,
   .live-control-column .secondary-action {
     min-height: 46px;
+  }
+
+  .live-card-head strong {
+    padding: 7px 12px;
+  }
+
+  .shift-window strong {
+    font-size: 14px;
   }
 
   .location-status-grid,
@@ -4163,7 +4176,34 @@ button:disabled {
   }
 
   .quick-action-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .quick-action-card {
+    min-height: 96px;
     grid-template-columns: 1fr;
+    align-content: start;
+    gap: 7px;
+    padding: 10px;
+  }
+
+  .quick-action-card span {
+    grid-row: auto;
+    width: 36px;
+    height: 36px;
+  }
+
+  .quick-action-card strong {
+    align-self: auto;
+    font-size: 12px;
+    line-height: 1.25;
+  }
+
+  .quick-action-card small {
+    align-self: auto;
+    font-size: 10px;
+    line-height: 1.3;
   }
 
   .dashboard-metrics-grid {
