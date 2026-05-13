@@ -897,28 +897,30 @@ function HomeScreen({ activeSession, breakMs, completedMs, dashboardOrder, dista
         </div>
 
         <div className="live-control-column">
-          {activeSession ? (
-            <button className="primary-action" onClick={punchOut} type="button">
-              <LogOut size={18} />
-              Punch Out
-            </button>
-          ) : onBreak ? (
-            <button className="primary-action" onClick={endBreak} type="button">
-              <Coffee size={18} />
-              End Break
-            </button>
-          ) : (
-            <button className="primary-action" onClick={punchIn} type="button">
-              <Timer size={18} />
-              Punch In
-            </button>
-          )}
-          {activeSession ? (
-            <button className="secondary-action break-action" onClick={markBreak} type="button">
-              <Coffee size={18} />
-              Mark Break
-            </button>
-          ) : null}
+          <div className="live-action-row">
+            {activeSession ? (
+              <button className="primary-action punch-action" onClick={punchOut} type="button">
+                <LogOut size={18} />
+                Punch Out
+              </button>
+            ) : onBreak ? (
+              <button className="primary-action punch-action" onClick={endBreak} type="button">
+                <Coffee size={18} />
+                End Break
+              </button>
+            ) : (
+              <button className="primary-action punch-action" onClick={punchIn} type="button">
+                <Timer size={18} />
+                Punch In
+              </button>
+            )}
+            {activeSession ? (
+              <button className="secondary-action break-action" onClick={markBreak} type="button" aria-label="Mark as break">
+                <Coffee size={18} />
+                <span className="button-label">Mark Break</span>
+              </button>
+            ) : null}
+          </div>
 
           <button className="zone-status-card" onClick={() => setActiveView('location')} type="button">
             <MapPin size={18} />

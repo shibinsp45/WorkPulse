@@ -1109,7 +1109,7 @@ button:disabled {
   display: grid;
   min-height: 108px;
   gap: 5px;
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: 14px;
   background: #fff;
   padding: 14px;
@@ -1149,7 +1149,7 @@ button:disabled {
 .todo-notes-card {
   display: grid;
   height: 100%;
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: 16px;
   background: var(--card);
   padding: 16px;
@@ -1204,10 +1204,31 @@ button:disabled {
   display: grid;
   grid-area: controls;
   align-content: center;
-  gap: 12px;
+  gap: 10px;
   min-width: 0;
   width: min(280px, 100%);
   justify-self: stretch;
+}
+
+.live-action-row {
+  display: flex;
+  min-width: 0;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.live-action-row .punch-action {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.break-action {
+  flex: 0 0 auto;
+  padding: 0 14px;
+}
+
+.break-action .button-label {
+  display: inline-block;
 }
 
 .timer-orbit {
@@ -1283,8 +1304,7 @@ button:disabled {
 
 .live-control-column .primary-action,
 .live-control-column .secondary-action {
-  width: 100%;
-  min-height: 58px;
+  min-height: 54px;
   border-radius: 14px;
   white-space: nowrap;
 }
@@ -1295,10 +1315,10 @@ button:disabled {
   grid-template-columns: 24px minmax(0, 1fr);
   align-items: center;
   gap: 10px;
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: 14px;
   background: #f8fafc;
-  padding: 12px;
+  padding: 11px 12px;
   text-align: left;
 }
 
@@ -1382,7 +1402,7 @@ button:disabled {
   grid-template-columns: 42px minmax(0, 1fr);
   align-items: center;
   gap: 10px;
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: 14px;
   background: #fbfcff;
   padding: 12px;
@@ -1438,7 +1458,7 @@ button:disabled {
   grid-template-columns: repeat(7, minmax(0, 1fr));
   align-items: end;
   gap: 9px;
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: 14px;
   padding: 12px 10px;
 }
@@ -1464,7 +1484,7 @@ button:disabled {
 
 .weekly-summary-card {
   display: grid;
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: 14px;
   padding: 6px 12px;
 }
@@ -1489,7 +1509,7 @@ button:disabled {
   display: grid;
   gap: 12px;
   min-width: 0;
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: 14px;
   background: #fbfcff;
   padding: 14px;
@@ -1583,7 +1603,7 @@ button:disabled {
   gap: 10px;
   min-height: 112px;
   align-content: space-between;
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: 13px;
   padding: 14px;
 }
@@ -3305,6 +3325,25 @@ button:disabled {
   background: rgba(240, 68, 56, 0.14);
 }
 
+:root[data-theme="dark"] .dashboard-live-card,
+:root[data-theme="dark"] .quick-actions-card,
+:root[data-theme="dark"] .weekly-overview-card,
+:root[data-theme="dark"] .todo-notes-card,
+:root[data-theme="dark"] .metric-card {
+  border-color: transparent;
+}
+
+:root[data-theme="dark"] .quick-action-card,
+:root[data-theme="dark"] .todo-pane,
+:root[data-theme="dark"] .note-preview-card,
+:root[data-theme="dark"] .zone-status-card,
+:root[data-theme="dark"] .mini-bar-chart,
+:root[data-theme="dark"] .weekly-summary-card {
+  border-color: transparent;
+  background: rgba(15, 23, 42, 0.38);
+  box-shadow: none;
+}
+
 :root[data-theme="dark"] .settings-list svg,
 :root[data-theme="dark"] .event-time,
 :root[data-theme="dark"] .history-row b,
@@ -4190,8 +4229,8 @@ button:disabled {
       "timer"
       "controls";
     grid-template-columns: 1fr;
-    gap: 12px;
-    padding: 16px;
+    gap: 10px;
+    padding: 14px;
   }
 
   .timer-orbit {
@@ -4200,7 +4239,38 @@ button:disabled {
 
   .live-control-column .primary-action,
   .live-control-column .secondary-action {
-    min-height: 46px;
+    min-height: 50px;
+  }
+
+  .live-control-column {
+    width: 100%;
+    gap: 9px;
+  }
+
+  .live-action-row {
+    gap: 8px;
+  }
+
+  .break-action {
+    width: 50px;
+    min-width: 50px;
+    padding: 0;
+  }
+
+  .break-action .button-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .zone-status-card {
+    min-height: 62px;
+    grid-template-columns: 22px minmax(0, 1fr);
+    gap: 9px;
+    padding: 10px 12px;
   }
 
   .live-card-head strong {
