@@ -3718,7 +3718,8 @@ button:disabled {
     max-width: 1180px;
     margin: 0 auto;
     grid-template-columns: repeat(12, minmax(0, 1fr));
-    align-items: start;
+    grid-auto-flow: dense;
+    align-items: stretch;
     gap: 14px;
   }
 
@@ -3731,6 +3732,7 @@ button:disabled {
     min-height: 300px;
   }
 
+  .app-shell .home-stack .home-panel.panel-metrics,
   .app-shell .home-stack .home-panel.panel-weekly,
   .app-shell .home-stack .home-panel.panel-work {
     min-height: 240px;
@@ -3757,7 +3759,9 @@ button:disabled {
   }
 
   .app-shell .dashboard-metrics-grid {
+    height: 100%;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(0, 1fr));
   }
 
   .app-shell .dashboard-metrics-grid .metric-card {
