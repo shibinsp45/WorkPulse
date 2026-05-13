@@ -603,7 +603,21 @@ function WorkPulseLogo({ compact = false }) {
   );
 }
 
-function AppHeader({ activeView, now, onBack, setActiveView, user }) {
+function LocationSaveCard({ liveLocation, setActiveView, user }) {
+  const hasSavedLocation = Boolean(user?.location);
+
+  return (
+    <button className="location-save-card" onClick={() => setActiveView('location')} type="button">
+      <MapPin size={18} />
+      <span>
+        <strong>{hasSavedLocation ? 'Work location saved' : 'Save work location'}</strong>
+        <small>{liveLocation ? 'Live location active' : 'Live location pending'}</small>
+      </span>
+    </button>
+  );
+}
+
+function AppHeader({ activeView, liveLocation, now, onBack, setActiveView, user }) {
   const isBackView = DETAIL_VIEWS.has(activeView);
   const isHomeView = activeView === 'home';
   const title = VIEW_TITLES[activeView] ?? 'WorkPulse';
@@ -649,6 +663,7 @@ function AppHeader({ activeView, now, onBack, setActiveView, user }) {
           {workplace}
           <Pencil size={12} />
         </button>
+        <LocationSaveCard liveLocation={liveLocation} setActiveView={setActiveView} user={user} />
         <div>
           <p>{getGreeting(now)},</p>
           <h1>{user?.name ?? 'Employee'}</h1>
@@ -2910,6 +2925,7 @@ export default function App() {
       >
         <AppHeader
           activeView={activeView}
+          liveLocation={liveLocation}
           onBack={closeDetailView}
           now={today}
           setActiveView={navigateView}

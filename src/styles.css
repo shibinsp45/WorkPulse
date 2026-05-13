@@ -589,6 +589,43 @@ button:disabled {
   opacity: 0.72;
 }
 
+.location-save-card {
+  display: grid;
+  width: min(260px, 100%);
+  min-height: 74px;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--card);
+  padding: 14px 16px;
+  color: var(--ink);
+  text-align: left;
+  box-shadow: 0 14px 28px rgba(17, 24, 39, 0.06);
+}
+
+.location-save-card svg {
+  color: var(--primary);
+}
+
+.location-save-card span {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+
+.location-save-card strong {
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.location-save-card small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+}
+
 .header-actions {
   display: flex;
   align-items: center;
@@ -3159,6 +3196,7 @@ button:disabled {
 :root[data-theme="dark"] .header-icon,
 :root[data-theme="dark"] .header-action,
 :root[data-theme="dark"] .location-chip,
+:root[data-theme="dark"] .location-save-card,
 :root[data-theme="dark"] .date-chip,
 :root[data-theme="dark"] .empty-clock-card,
 :root[data-theme="dark"] .pin-button,
