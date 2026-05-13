@@ -603,21 +603,7 @@ function WorkPulseLogo({ compact = false }) {
   );
 }
 
-function LocationSaveCard({ liveLocation, setActiveView, user }) {
-  const hasSavedLocation = Boolean(user?.location);
-
-  return (
-    <button className="location-save-card" onClick={() => setActiveView('location')} type="button">
-      <MapPin size={18} />
-      <span>
-        <strong>{hasSavedLocation ? 'Work location saved' : 'Save work location'}</strong>
-        <small>{liveLocation ? 'Live location active' : 'Live location pending'}</small>
-      </span>
-    </button>
-  );
-}
-
-function AppHeader({ activeView, liveLocation, now, onBack, setActiveView, user }) {
+function AppHeader({ activeView, now, onBack, setActiveView, user }) {
   const isBackView = DETAIL_VIEWS.has(activeView);
   const isHomeView = activeView === 'home';
   const title = VIEW_TITLES[activeView] ?? 'WorkPulse';
@@ -663,7 +649,6 @@ function AppHeader({ activeView, liveLocation, now, onBack, setActiveView, user 
           {workplace}
           <Pencil size={12} />
         </button>
-        <LocationSaveCard liveLocation={liveLocation} setActiveView={setActiveView} user={user} />
         <div>
           <p>{getGreeting(now)},</p>
           <h1>{user?.name ?? 'Employee'}</h1>
@@ -841,7 +826,8 @@ function HomeScreen({ activeSession, breakMs, completedMs, dashboardOrder, dista
       : insideOffice
         ? 'Inside office zone'
         : `${formatDistance(distanceMeters)} from office`;
-  const timerStatus = activeSession ? 'Working' : onBreak ? 'On break' : 'Ready';
+  const currentBreakMs = onBreak && todayRecord.sessions.at(-1)?.out ? now - todayRecord.sessions.at(-1).out : 0;
+  const timerStatus = activeSession ? 'Punched in' : onBreak ? `Break ${formatTimer(currentBreakMs)}` : 'Punched out';
   const shiftRange = formatScheduleRange(user?.schedule);
   const timerStartCopy = activeSession
     ? `Started at ${formatClock(activeSession.in)}`
@@ -2925,7 +2911,6 @@ export default function App() {
       >
         <AppHeader
           activeView={activeView}
-          liveLocation={liveLocation}
           onBack={closeDetailView}
           now={today}
           setActiveView={navigateView}
