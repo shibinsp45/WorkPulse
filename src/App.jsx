@@ -5,6 +5,7 @@ import {
   Bell,
   CalendarDays,
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
   CircleAlert,
   Clock3,
@@ -156,6 +157,14 @@ function formatLongDate(date) {
   return date.toLocaleDateString([], {
     weekday: 'long',
     month: 'long',
+    day: 'numeric',
+  });
+}
+
+function formatHeaderDate(date) {
+  return date.toLocaleDateString([], {
+    weekday: 'short',
+    month: 'short',
     day: 'numeric',
   });
 }
@@ -613,10 +622,10 @@ function AppHeader({ activeView, now, onBack, setActiveView, user }) {
     return (
       <header className={isBackView ? 'app-header compact-header detail-header' : 'app-header compact-header'}>
         <div className="compact-header-top">
-          <button className="location-chip location-chip-button" onClick={() => setActiveView('location')} type="button" aria-label="Edit workplace location">
+          <button className="location-chip location-chip-button" onClick={() => setActiveView('location')} type="button" aria-label="Open workplace location">
             <MapPin size={13} />
             {workplace}
-            <Pencil size={12} />
+            <ChevronDown size={13} />
           </button>
           <div className="header-actions compact-actions">
             <button className="header-icon has-dot" onClick={() => setActiveView('notifications')} type="button" aria-label="Open notifications">
@@ -627,7 +636,7 @@ function AppHeader({ activeView, now, onBack, setActiveView, user }) {
 
         <div className="compact-header-bottom">
           {isBackView ? (
-            <button className="header-icon" onClick={onBack} type="button" aria-label="Go back">
+            <button className="header-icon back-icon-button" onClick={onBack} type="button" aria-label="Go back">
               <ArrowLeft size={18} />
             </button>
           ) : null}
@@ -640,19 +649,22 @@ function AppHeader({ activeView, now, onBack, setActiveView, user }) {
   return (
     <header className="app-header">
       <div className="header-copy">
-        <button className="location-chip location-chip-button" onClick={() => setActiveView('location')} type="button" aria-label="Edit workplace location">
+        <button className="location-chip location-chip-button" onClick={() => setActiveView('location')} type="button" aria-label="Open workplace location">
           <MapPin size={13} />
           {workplace}
-          <Pencil size={12} />
+          <ChevronDown size={13} />
         </button>
         <div>
           <p>{getGreeting(now)},</p>
           <h1>{user?.name ?? 'Employee'}</h1>
-          <span>{formatLongDate(now)}</span>
         </div>
       </div>
 
       <div className="header-actions">
+        <div className="dashboard-date-pill">
+          <span>Today</span>
+          <strong>{formatHeaderDate(now)}</strong>
+        </div>
         <button className="header-icon has-dot" onClick={() => setActiveView('notifications')} type="button" aria-label="Open notifications">
           <Bell size={18} />
         </button>

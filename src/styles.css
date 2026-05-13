@@ -629,6 +629,33 @@ button:disabled {
   content: "";
 }
 
+.dashboard-date-pill {
+  display: grid;
+  max-width: 150px;
+  min-height: 42px;
+  align-content: center;
+  gap: 2px;
+  border-radius: 14px;
+  background: #fff;
+  padding: 0 14px;
+  text-align: right;
+  box-shadow: 0 10px 24px rgba(17, 24, 39, 0.08);
+}
+
+.dashboard-date-pill span {
+  margin: 0;
+  color: var(--primary);
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.dashboard-date-pill strong {
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .header-action {
   padding: 0 12px;
   color: var(--primary);
@@ -3183,6 +3210,7 @@ button:disabled {
 
 :root[data-theme="dark"] .header-icon,
 :root[data-theme="dark"] .header-action,
+:root[data-theme="dark"] .dashboard-date-pill,
 :root[data-theme="dark"] .location-chip,
 :root[data-theme="dark"] .date-chip,
 :root[data-theme="dark"] .empty-clock-card,
@@ -3648,6 +3676,11 @@ button:disabled {
 
   .app-shell.detail-shell .compact-header {
     width: min(920px, calc(100% - 64px));
+  }
+
+  .app-shell .back-icon-button,
+  .app-shell.detail-shell .back-icon-button {
+    display: none;
   }
 
   .app-shell .app-header h1 {
