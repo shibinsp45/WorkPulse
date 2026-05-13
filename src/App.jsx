@@ -619,10 +619,6 @@ function AppHeader({ activeView, now, onBack, setActiveView, user }) {
             <Pencil size={12} />
           </button>
           <div className="header-actions compact-actions">
-            <button className="header-utility-action" onClick={() => setActiveView('manual')} type="button">
-              <Clock3 size={15} />
-              Add Time
-            </button>
             <button className="header-icon has-dot" onClick={() => setActiveView('notifications')} type="button" aria-label="Open notifications">
               <Bell size={18} />
             </button>
@@ -817,6 +813,7 @@ function HomeScreen({ activeSession, breakMs, completedMs, dashboardOrder, dista
   const weeklySeries = getWeeklyHoursSeries(records, today);
   const weeklyAverage = weeklySeries.length ? weeklyMs / weeklySeries.length : 0;
   const attendancePercent = Math.min(100, Math.round((completedMs / TARGET_MS) * 100));
+  const timerProgress = Math.min(100, Math.max(0, (totalMs / TARGET_MS) * 100));
   const hasSavedLocation = Boolean(user?.location);
   const insideOffice = distanceMeters !== null && distanceMeters <= WORKPLACE_RADIUS_METERS;
   const locationStatus = !hasSavedLocation
@@ -873,7 +870,10 @@ function HomeScreen({ activeSession, breakMs, completedMs, dashboardOrder, dista
         </div>
 
         <div className="live-timer-column">
-          <div className={activeSession ? 'timer-orbit active' : 'timer-orbit'}>
+          <div
+            className={activeSession ? 'timer-orbit active' : 'timer-orbit'}
+            style={{ '--timer-progress': `${timerProgress}%` }}
+          >
             <div className="timer-core">
               <strong>{formatTimer(totalMs)}</strong>
               <span>{timerStartCopy}</span>
@@ -1082,24 +1082,23 @@ function TimelineScreen({ records, today, todayRecord, user }) {
 
   return (
     <div className={`screen-stack timeline-screen ${Object.keys(records).length ? 'has-history' : 'no-history'}`}>
-      <div className="timeline-tools">
-        <button type="button" aria-label="Open calendar">
+      <div className="timeline-date-row">
+        <section className="date-strip">
+          {weekDays.map((day) => {
+            const key = formatDateKey(day);
+            const isToday = key === formatDateKey(today);
+            return (
+              <div className={isToday ? 'date-chip active' : 'date-chip'} key={key}>
+                <span>{day.toLocaleDateString([], { weekday: 'short' })}</span>
+                <strong>{day.getDate()}</strong>
+              </div>
+            );
+          })}
+        </section>
+        <button className="timeline-calendar-button" type="button" aria-label="Open calendar">
           <CalendarDays size={18} />
         </button>
       </div>
-
-      <section className="date-strip">
-        {weekDays.map((day) => {
-          const key = formatDateKey(day);
-          const isToday = key === formatDateKey(today);
-          return (
-            <div className={isToday ? 'date-chip active' : 'date-chip'} key={key}>
-              <span>{day.toLocaleDateString([], { weekday: 'short' })}</span>
-              <strong>{day.getDate()}</strong>
-            </div>
-          );
-        })}
-      </section>
 
       <section className="timeline-shift-card">
         <div>
