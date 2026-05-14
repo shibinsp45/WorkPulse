@@ -6,9 +6,10 @@
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
+  "display_override": ["fullscreen", "standalone"],
   "orientation": "portrait-primary",
-  "background_color": "#f5f6fb",
-  "theme_color": "#5548f4",
+  "background_color": "#111827",
+  "theme_color": "#111827",
   "categories": ["productivity", "business", "utilities"],
   "icons": [
     {

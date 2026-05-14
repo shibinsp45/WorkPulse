@@ -28,9 +28,20 @@
   text-rendering: optimizeLegibility;
 }
 
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+html {
+  background: var(--bg);
+}
+
 body {
   min-width: 320px;
   min-height: 100vh;
+  min-height: 100dvh;
   background:
     linear-gradient(135deg, rgba(85, 72, 244, 0.08), transparent 32%),
     linear-gradient(230deg, rgba(25, 191, 120, 0.1), transparent 30%),
@@ -64,6 +75,7 @@ button:disabled {
 .page {
   display: grid;
   min-height: 100vh;
+  min-height: 100dvh;
   place-items: center;
   padding: clamp(12px, 3vw, 32px);
 }
@@ -73,6 +85,7 @@ button:disabled {
   display: flex;
   width: min(390px, 100%);
   height: min(850px, calc(100vh - 24px));
+  height: min(850px, calc(100dvh - 24px));
   min-height: 680px;
   flex-direction: column;
   overflow: hidden;
@@ -351,6 +364,53 @@ button:disabled {
   margin-top: 8px;
 }
 
+.auth-illustration {
+  position: relative;
+  display: grid;
+  min-height: 170px;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 50% 30%, rgba(255, 255, 255, 0.22), transparent 34%),
+    linear-gradient(135deg, var(--primary-2), var(--primary));
+  color: #fff;
+}
+
+.auth-orbit {
+  display: grid;
+  width: 82px;
+  height: 82px;
+  place-items: center;
+  border: 3px solid rgba(255, 255, 255, 0.75);
+  border-radius: 50%;
+}
+
+.auth-mini-card {
+  position: absolute;
+  right: 18px;
+  bottom: 16px;
+  display: grid;
+  min-width: 112px;
+  gap: 3px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.17);
+  padding: 12px 14px;
+  text-align: center;
+  box-shadow: 0 16px 32px rgba(17, 24, 39, 0.14);
+}
+
+.auth-mini-card span,
+.auth-mini-card small {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.auth-mini-card strong {
+  font-size: 24px;
+}
+
 .mini-logo {
   display: grid;
   width: 48px;
@@ -429,6 +489,47 @@ button:disabled {
 .auth-submit {
   width: 100%;
   margin-top: 4px;
+}
+
+.auth-divider {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.google-auth-button {
+  display: inline-flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: 12px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 900;
+  box-shadow: 0 10px 24px rgba(17, 24, 39, 0.06);
+}
+
+.google-auth-button span {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 50%;
+  background: #f1f0ff;
+  color: var(--primary);
+}
+
+.form-note {
+  margin-top: -8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.45;
+  text-align: center;
 }
 
 .guest-entry {
@@ -783,6 +884,7 @@ button:disabled {
 .settings-list,
 .note-field,
 .focus-section,
+.task-scheduler-card,
 .photo-box {
   border: 1px solid var(--line);
   border-radius: 14px;
@@ -1394,11 +1496,12 @@ button:disabled {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+  align-items: stretch;
 }
 
 .quick-action-card {
   display: grid;
-  min-height: 86px;
+  min-height: 104px;
   grid-template-columns: 42px minmax(0, 1fr);
   align-items: center;
   gap: 10px;
@@ -2566,13 +2669,19 @@ button:disabled {
 }
 
 .notification-toolbar {
+  position: sticky;
+  bottom: calc(8px + env(safe-area-inset-bottom));
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
+  z-index: 3;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(245, 246, 251, 0.7), var(--bg) 45%);
+  padding-top: 8px;
 }
 
 .notification-toolbar button {
-  min-height: 42px;
+  min-height: 46px;
   border: 1px solid var(--line);
   border-radius: 12px;
   background: #fff;
@@ -2696,12 +2805,19 @@ button:disabled {
 .manual-time-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
   gap: 10px;
 }
 
 .manual-field {
   display: grid;
+  align-content: start;
   gap: 10px;
+  padding: 14px;
+}
+
+.manual-time-grid .manual-field {
+  min-height: 112px;
 }
 
 .manual-field span {
@@ -2711,8 +2827,9 @@ button:disabled {
 }
 
 .manual-field input {
+  display: block;
   width: 100%;
-  height: 44px;
+  height: 48px;
   min-width: 0;
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -2720,7 +2837,8 @@ button:disabled {
   color: var(--ink);
   background: #fff;
   font: inherit;
-  font-size: 13px;
+  font-size: 16px;
+  line-height: 48px;
 }
 
 .manual-preview {
@@ -2982,7 +3100,9 @@ button:disabled {
 
 .note-field span,
 .focus-section h3,
-.photo-box h3 {
+.photo-box h3,
+.task-title-field span,
+.task-schedule-grid span {
   font-size: 13px;
   font-weight: 900;
 }
@@ -3031,20 +3151,146 @@ button:disabled {
   background: var(--primary);
 }
 
+.task-scheduler-card {
+  display: grid;
+  gap: 12px;
+}
+
+.task-title-field,
+.task-schedule-grid label {
+  display: grid;
+  gap: 8px;
+}
+
+.task-title-field input,
+.task-schedule-grid input {
+  width: 100%;
+  height: 46px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fbfcff;
+  padding: 0 12px;
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px;
+}
+
+.task-schedule-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) repeat(2, minmax(0, 0.9fr));
+  gap: 10px;
+}
+
+.task-schedule-list {
+  display: grid;
+  gap: 10px;
+}
+
+.scheduled-task-row {
+  display: grid;
+  gap: 8px;
+  border-radius: 12px;
+  background: #fbfcff;
+  padding: 12px;
+}
+
+.scheduled-task-row label {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  font-weight: 900;
+}
+
+.scheduled-task-row label input {
+  accent-color: var(--primary);
+}
+
+.scheduled-task-row small,
+.task-empty-copy,
+.photo-status {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.scheduled-task-row div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.scheduled-task-row a,
+.scheduled-task-row button,
+.drive-button {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 10px;
+  background: #f1f0ff;
+  padding: 0 10px;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.scheduled-task-row button {
+  background: #fff0ef;
+  color: var(--red);
+}
+
 .photo-box {
   display: grid;
   gap: 12px;
 }
 
-.photo-box button {
+.photo-upload-tile {
   display: grid;
-  width: 70px;
-  height: 70px;
+  min-height: 84px;
   place-items: center;
+  gap: 6px;
   border: 1px dashed #c6cbff;
   border-radius: 12px;
   background: #f8f8ff;
   color: var(--primary);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.photo-upload-tile input {
+  display: none;
+}
+
+.photo-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.photo-preview-grid figure {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.photo-preview-grid img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 12px;
+}
+
+.photo-preview-grid button {
+  min-height: 34px;
+  border-radius: 10px;
+  background: #fff0ef;
+  color: var(--red);
+  font-size: 12px;
+  font-weight: 900;
 }
 
 .save-note {
@@ -3121,7 +3367,7 @@ button:disabled {
   grid-template-columns: repeat(5, 1fr);
   border-top: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.94);
-  padding: 8px 12px 12px;
+  padding: 8px 12px calc(12px + env(safe-area-inset-bottom));
   backdrop-filter: blur(18px);
 }
 
@@ -3201,6 +3447,7 @@ button:disabled {
 :root[data-theme="dark"] .settings-list,
 :root[data-theme="dark"] .note-field,
 :root[data-theme="dark"] .focus-section,
+:root[data-theme="dark"] .task-scheduler-card,
 :root[data-theme="dark"] .photo-box,
 :root[data-theme="dark"] .metric-card,
 :root[data-theme="dark"] .manual-shortcut-card,
@@ -3279,6 +3526,8 @@ button:disabled {
 :root[data-theme="dark"] .manual-field input,
 :root[data-theme="dark"] .location-field input,
 :root[data-theme="dark"] .note-field textarea,
+:root[data-theme="dark"] .task-title-field input,
+:root[data-theme="dark"] .task-schedule-grid input,
 :root[data-theme="dark"] .schedule-field input {
   border-color: var(--line);
   color: var(--ink);
@@ -3297,6 +3546,17 @@ button:disabled {
 :root[data-theme="dark"] .chart-toggle,
 :root[data-theme="dark"] .focus-tags button:not(.active) {
   background: #101827;
+}
+
+:root[data-theme="dark"] .scheduled-task-row,
+:root[data-theme="dark"] .photo-upload-tile {
+  background: #101827;
+}
+
+:root[data-theme="dark"] .scheduled-task-row a,
+:root[data-theme="dark"] .drive-button {
+  background: #242047;
+  color: #d7d4ff;
 }
 
 :root[data-theme="dark"] .timer-orbit {
@@ -3464,9 +3724,23 @@ button:disabled {
   color: #d7d4ff;
 }
 
+:root[data-theme="dark"] .notification-toolbar {
+  background: linear-gradient(180deg, rgba(17, 24, 39, 0.64), var(--bg) 45%);
+}
+
 :root[data-theme="dark"] .notification-toolbar button.danger {
   background: #26191b;
   color: #fca5a5;
+}
+
+:root[data-theme="dark"] .google-auth-button {
+  background: #182235;
+  color: var(--ink);
+}
+
+:root[data-theme="dark"] .google-auth-button span {
+  background: #242047;
+  color: #d7d4ff;
 }
 
 :root[data-theme="dark"] .theme-settings-row .settings-switch {
@@ -3503,7 +3777,21 @@ button:disabled {
 }
 
 .detail-shell .content-area {
-  padding-bottom: 22px;
+  padding-bottom: calc(22px + env(safe-area-inset-bottom));
+}
+
+@media (max-width: 759px) {
+  .app-header {
+    padding-top: calc(16px + env(safe-area-inset-top));
+  }
+
+  .content-area {
+    padding-bottom: calc(94px + env(safe-area-inset-bottom));
+  }
+
+  .detail-shell .content-area {
+    padding-bottom: calc(22px + env(safe-area-inset-bottom));
+  }
 }
 
 @media (min-width: 760px) {
@@ -3514,6 +3802,7 @@ button:disabled {
   .intro-shell {
     width: 100vw;
     height: 100vh;
+    height: 100dvh;
     min-height: 620px;
     border: 0;
     border-radius: 0;
@@ -3640,7 +3929,7 @@ button:disabled {
 
   .intro-shell .auth-brand {
     grid-column: 1;
-    grid-row: 1 / 5;
+    grid-row: 1 / 8;
     align-self: stretch;
     flex-direction: column;
     align-items: flex-start;
@@ -3676,14 +3965,23 @@ button:disabled {
 
   .intro-shell .auth-toggle,
   .intro-shell .auth-form,
+  .intro-shell .auth-illustration,
+  .intro-shell .auth-divider,
+  .intro-shell .google-auth-button,
+  .intro-shell .form-note,
   .intro-shell .guest-entry {
     grid-column: 2;
+  }
+
+  .intro-shell .auth-illustration {
+    min-height: 150px;
   }
 
   .app-shell {
     display: grid;
     width: 100vw;
     height: 100vh;
+    height: 100dvh;
     min-height: 700px;
     grid-template-columns: 240px minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr);
@@ -4079,7 +4377,9 @@ button:disabled {
   .phone-shell {
     width: 100vw;
     height: 100vh;
+    height: 100dvh;
     min-height: 100vh;
+    min-height: 100dvh;
     border: 0;
     border-radius: 0;
     box-shadow: none;
@@ -4163,7 +4463,9 @@ button:disabled {
   .phone-shell {
     width: 100%;
     height: 100vh;
+    height: 100dvh;
     min-height: 100vh;
+    min-height: 100dvh;
     border: 0;
     border-radius: 0;
   }
@@ -4327,6 +4629,10 @@ button:disabled {
   }
 
   .todo-notes-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .task-schedule-grid {
     grid-template-columns: 1fr;
   }
 

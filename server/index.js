@@ -19,7 +19,7 @@ const DEFAULT_SCHEDULE = { start: '09:00', end: '18:00' };
 const app = express();
 
 app.use(cors());
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '12mb' }));
 
 async function readStore() {
   await fs.mkdir(DATA_DIR, { recursive: true });
@@ -87,6 +87,8 @@ function normalizeRecord(record) {
     sessions: sortSessions(record?.sessions ?? []),
     notes: record?.notes ?? '',
     focus: record?.focus ?? [],
+    tasks: Array.isArray(record?.tasks) ? record.tasks : [],
+    photos: Array.isArray(record?.photos) ? record.photos : [],
   };
 }
 
@@ -172,13 +174,17 @@ app.post('/api/auth/signup', async (request, response) => {
 });
 
 app.post('/api/auth/login', async (request, response) => {
-  const email = String(request.body.email ?? '').trim().toLowerCase();
+  const identifier = String(request.body.email ?? request.body.identifier ?? '').trim().toLowerCase();
   const password = String(request.body.password ?? '');
   const store = await readStore();
-  const user = store.users.find((item) => item.email === email);
+  const user = store.users.find((item) => (
+    item.email === identifier
+    || String(item.employeeId ?? '').toLowerCase() === identifier
+    || String(item.name ?? '').toLowerCase() === identifier
+  ));
 
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
-    return response.status(401).json({ message: 'Invalid email or password' });
+    return response.status(401).json({ message: 'Invalid employee ID, name, email, or password' });
   }
 
   response.json({
@@ -324,6 +330,8 @@ app.put('/api/records/:date/notes', requireAuth, async (request, response) => {
   const record = normalizeRecord(user.records?.[request.params.date]);
   record.notes = String(request.body.notes ?? '');
   record.focus = Array.isArray(request.body.focus) ? request.body.focus : [];
+  record.tasks = Array.isArray(request.body.tasks) ? request.body.tasks : [];
+  record.photos = Array.isArray(request.body.photos) ? request.body.photos : [];
   user.records = { ...(user.records ?? {}), [request.params.date]: record };
   updateUser(request.store, user);
   await writeStore(request.store);

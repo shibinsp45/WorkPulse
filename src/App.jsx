@@ -20,12 +20,12 @@ import {
   LogOut,
   MapPin,
   Moon,
-  Pencil,
   Plus,
   Save,
   Shield,
   Sun,
   Timer,
+  Upload,
   User,
 } from 'lucide-react';
 
@@ -202,11 +202,43 @@ function getWeekDays(date) {
   });
 }
 
+function normalizeTasks(tasks) {
+  if (!Array.isArray(tasks)) return [];
+
+  return tasks
+    .map((task, index) => ({
+      id: String(task?.id ?? `task-${index}`),
+      title: String(task?.title ?? '').trim(),
+      date: /^\d{4}-\d{2}-\d{2}$/.test(String(task?.date ?? '')) ? task.date : '',
+      startTime: isValidTimeInput(task?.startTime) ? task.startTime : '',
+      endTime: isValidTimeInput(task?.endTime) ? task.endTime : '',
+      done: Boolean(task?.done),
+      createdAt: Number(task?.createdAt) || 0,
+    }))
+    .filter((task) => task.title);
+}
+
+function normalizePhotos(photos) {
+  if (!Array.isArray(photos)) return [];
+
+  return photos
+    .map((photo, index) => ({
+      id: String(photo?.id ?? `photo-${index}`),
+      name: String(photo?.name ?? `Photo ${index + 1}`),
+      type: String(photo?.type ?? 'image/jpeg'),
+      dataUrl: String(photo?.dataUrl ?? ''),
+      createdAt: Number(photo?.createdAt) || 0,
+    }))
+    .filter((photo) => photo.dataUrl.startsWith('data:image/'));
+}
+
 function normalizeRecord(record) {
   return {
     sessions: [...(record?.sessions ?? [])].sort((a, b) => Number(a.in) - Number(b.in)),
     notes: record?.notes ?? '',
     focus: record?.focus ?? [],
+    tasks: normalizeTasks(record?.tasks),
+    photos: normalizePhotos(record?.photos),
   };
 }
 
@@ -251,6 +283,50 @@ function formatTimeLabel(value) {
 function formatScheduleRange(schedule) {
   const cleanSchedule = normalizeSchedule(schedule);
   return `${formatTimeLabel(cleanSchedule.start)} - ${formatTimeLabel(cleanSchedule.end)}`;
+}
+
+function formatTaskSchedule(task) {
+  if (!task.date) return 'No schedule';
+  const date = new Date(`${task.date}T00:00:00`);
+  const day = Number.isNaN(date.getTime())
+    ? task.date
+    : date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+
+  if (!task.startTime) return day;
+  return `${day} · ${formatTimeLabel(task.startTime)}${task.endTime ? ` - ${formatTimeLabel(task.endTime)}` : ''}`;
+}
+
+function compactCalendarDate(date, time) {
+  const cleanDate = String(date ?? '').replaceAll('-', '');
+  if (!time) return cleanDate;
+  return `${cleanDate}T${String(time).replace(':', '')}00`;
+}
+
+function addMinutesToTime(time, minutesToAdd) {
+  const minutes = parseTimeMinutes(time);
+  if (minutes === null) return '';
+  const next = Math.min(23 * 60 + 59, minutes + minutesToAdd);
+  return `${pad(Math.floor(next / 60))}:${pad(next % 60)}`;
+}
+
+function buildGoogleCalendarUrl(task) {
+  const title = encodeURIComponent(task.title || 'WorkPulse task');
+  const details = encodeURIComponent('Added from WorkPulse.');
+  const base = 'https://calendar.google.com/calendar/render?action=TEMPLATE';
+
+  if (!task.date) {
+    return `${base}&text=${title}&details=${details}`;
+  }
+
+  if (!task.startTime) {
+    const date = new Date(`${task.date}T00:00:00`);
+    date.setDate(date.getDate() + 1);
+    const endDate = formatDateKey(date).replaceAll('-', '');
+    return `${base}&text=${title}&dates=${compactCalendarDate(task.date)}/${endDate}&details=${details}`;
+  }
+
+  const endTime = task.endTime || addMinutesToTime(task.startTime, 30);
+  return `${base}&text=${title}&dates=${compactCalendarDate(task.date, task.startTime)}/${compactCalendarDate(task.date, endTime)}&details=${details}`;
 }
 
 function calculateScheduleDurationMs(schedule) {
@@ -848,7 +924,13 @@ function HomeScreen({ activeSession, breakMs, completedMs, dashboardOrder, dista
     : lastClosed
       ? `Last session ended ${formatClock(lastClosed.out)}`
       : 'Ready to start';
-  const dashboardTasks = [
+  const savedTasks = todayRecord.tasks ?? [];
+  const dashboardTasks = savedTasks.length ? savedTasks.slice(0, 4).map((task) => ({
+    id: task.id,
+    label: task.title,
+    meta: task.done ? 'Done' : formatTaskSchedule(task),
+    done: task.done,
+  })) : [
     { id: 'notes', label: notePreview ? 'Review today notes' : 'Add a work note', meta: notePreview ? 'Low' : 'High', done: Boolean(notePreview) },
     { id: 'punch', label: activeSession ? 'Complete active session' : 'Start or confirm work session', meta: activeSession ? 'High' : 'Medium', done: Boolean(lastClosed) },
     { id: 'manual', label: 'Check missing punches', meta: 'Medium', done: false },
@@ -949,16 +1031,6 @@ function HomeScreen({ activeSession, breakMs, completedMs, dashboardOrder, dista
             <strong>Add Missing Punch</strong>
             <small>Add manual entry</small>
           </button>
-          <button className="quick-action-card green" onClick={() => setActiveView('manual')} type="button">
-            <span><Pencil size={22} /></span>
-            <strong>Request Adjustment</strong>
-            <small>Edit wrong punch</small>
-          </button>
-          <button className="quick-action-card blue" onClick={() => setActiveView('timeline')} type="button">
-            <span><Clock3 size={22} /></span>
-            <strong>View Timeline</strong>
-            <small>See full history</small>
-          </button>
           <button className="quick-action-card orange" onClick={() => setActiveView('reports')} type="button">
             <span><BarChart3 size={22} /></span>
             <strong>My Reports</strong>
@@ -1019,13 +1091,18 @@ function HomeScreen({ activeSession, breakMs, completedMs, dashboardOrder, dista
               <button onClick={() => setActiveView('notes')} type="button">Add Task</button>
             </div>
             <div className="task-list">
-              {dashboardTasks.map((task) => (
-                <label className="task-row" key={task.id}>
-                  <input checked={task.done} readOnly type="checkbox" />
-                  <span>{task.label}</span>
-                  <small className={`task-priority ${task.meta.toLowerCase()}`}>{task.meta}</small>
-                </label>
-              ))}
+              {dashboardTasks.map((task) => {
+                const priorityClass = ['high', 'medium', 'low'].includes(String(task.meta).toLowerCase())
+                  ? String(task.meta).toLowerCase()
+                  : '';
+                return (
+                  <label className="task-row" key={task.id}>
+                    <input checked={task.done} readOnly type="checkbox" />
+                    <span>{task.label}</span>
+                    <small className={`task-priority ${priorityClass}`}>{task.meta}</small>
+                  </label>
+                );
+              })}
             </div>
           </div>
           <div className="todo-pane">
@@ -1870,14 +1947,6 @@ function NotificationsScreen() {
           Unread {unreadCount ? `(${unreadCount})` : ''}
         </button>
       </div>
-      <div className="notification-toolbar" aria-label="Notification actions">
-        <button disabled={!unreadCount} onClick={markAsRead} type="button">
-          Mark as read
-        </button>
-        <button className="danger" disabled={!activeNotifications.length} onClick={clearNotifications} type="button">
-          Clear
-        </button>
-      </div>
       <section className="notification-list" aria-live="polite">
         {visibleNotifications.length === 0 ? (
           <div className="empty-state compact">
@@ -1901,18 +1970,40 @@ function NotificationsScreen() {
           );
         })}
       </section>
+      <div className="notification-toolbar" aria-label="Notification actions">
+        <button disabled={!unreadCount} onClick={markAsRead} type="button">
+          Mark as Read
+        </button>
+        <button className="danger" disabled={!activeNotifications.length} onClick={clearNotifications} type="button">
+          Clear
+        </button>
+      </div>
     </div>
   );
 }
 
-function NotesScreen({ record, saveNotes }) {
+function NotesScreen({ dateKey, record, saveNotes }) {
   const [notes, setNotes] = useState(record.notes);
   const [selectedTags, setSelectedTags] = useState(record.focus);
+  const [tasks, setTasks] = useState(record.tasks);
+  const [photos, setPhotos] = useState(record.photos);
+  const [taskForm, setTaskForm] = useState({
+    title: '',
+    date: dateKey,
+    startTime: '',
+    endTime: '',
+  });
+  const [photoStatus, setPhotoStatus] = useState('');
+  const focusSnapshot = JSON.stringify(record.focus ?? []);
+  const taskSnapshot = JSON.stringify(record.tasks ?? []);
+  const photoSnapshot = JSON.stringify(record.photos ?? []);
 
   useEffect(() => {
     setNotes(record.notes);
     setSelectedTags(record.focus);
-  }, [record.focus, record.notes]);
+    setTasks(record.tasks);
+    setPhotos(record.photos);
+  }, [focusSnapshot, photoSnapshot, record.notes, taskSnapshot]);
 
   function toggleTag(tag) {
     setSelectedTags((current) => (
@@ -1920,6 +2011,84 @@ function NotesScreen({ record, saveNotes }) {
         ? current.filter((item) => item !== tag)
         : [...current, tag]
     ));
+  }
+
+  function updateTaskField(field, value) {
+    setTaskForm((current) => ({ ...current, [field]: value }));
+  }
+
+  function addTask() {
+    const title = taskForm.title.trim();
+    if (!title) return;
+
+    setTasks((current) => normalizeTasks([
+      ...current,
+      {
+        ...taskForm,
+        id: `task-${Date.now()}`,
+        title,
+        createdAt: Date.now(),
+      },
+    ]));
+    setTaskForm((current) => ({ ...current, title: '', startTime: '', endTime: '' }));
+  }
+
+  function toggleTask(taskId) {
+    setTasks((current) => current.map((task) => (
+      task.id === taskId ? { ...task, done: !task.done } : task
+    )));
+  }
+
+  function removeTask(taskId) {
+    setTasks((current) => current.filter((task) => task.id !== taskId));
+  }
+
+  function readPhoto(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve({
+        id: `photo-${Date.now()}-${file.name}`,
+        name: file.name,
+        type: file.type,
+        dataUrl: String(reader.result),
+        createdAt: Date.now(),
+      });
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function addPhotos(event) {
+    const files = Array.from(event.target.files ?? []).filter((file) => file.type.startsWith('image/'));
+    if (!files.length) return;
+
+    const remainingSlots = Math.max(0, 4 - photos.length);
+    const selectedFiles = files.slice(0, remainingSlots);
+
+    if (!selectedFiles.length) {
+      setPhotoStatus('You can save up to 4 photos per day.');
+      event.target.value = '';
+      return;
+    }
+
+    const nextPhotos = await Promise.all(selectedFiles.map(readPhoto));
+    setPhotos((current) => normalizePhotos([...current, ...nextPhotos]).slice(0, 4));
+    setPhotoStatus(selectedFiles.length < files.length ? 'Saved 4 photos. Extra files were skipped.' : 'Photos added to today.');
+    event.target.value = '';
+  }
+
+  function removePhoto(photoId) {
+    setPhotos((current) => current.filter((photo) => photo.id !== photoId));
+  }
+
+  function openDrive() {
+    if (!photos.length) {
+      setPhotoStatus('Upload a photo first, then save your note.');
+      return;
+    }
+
+    window.open('https://drive.google.com/drive/my-drive', '_blank', 'noopener,noreferrer');
+    setPhotoStatus('Photos are saved in WorkPulse. Upload them to Drive from the opened tab.');
   }
 
   return (
@@ -1938,20 +2107,95 @@ function NotesScreen({ record, saveNotes }) {
         <div className="focus-tags">
           {focusTags.map((tag) => (
             <button className={selectedTags.includes(tag) ? 'active' : ''} key={tag} onClick={() => toggleTag(tag)} type="button">
-              {tag}
+          {tag}
             </button>
           ))}
         </div>
       </section>
 
-      <section className="photo-box">
-        <h3>Add Photos</h3>
-        <button type="button" aria-label="Add photo">
-          <Plus size={24} />
-        </button>
+      <section className="task-scheduler-card">
+        <div className="section-title">
+          <div>
+            <span className="eyebrow">Todo schedule</span>
+            <h2>Tasks</h2>
+          </div>
+          <button onClick={addTask} type="button">Add Task</button>
+        </div>
+        <label className="task-title-field">
+          <span>Task</span>
+          <input
+            onChange={(event) => updateTaskField('title', event.target.value)}
+            placeholder="Add task title"
+            type="text"
+            value={taskForm.title}
+          />
+        </label>
+        <div className="task-schedule-grid">
+          <label>
+            <span>Date</span>
+            <input onChange={(event) => updateTaskField('date', event.target.value)} type="date" value={taskForm.date} />
+          </label>
+          <label>
+            <span>Start</span>
+            <input onChange={(event) => updateTaskField('startTime', event.target.value)} type="time" value={taskForm.startTime} />
+          </label>
+          <label>
+            <span>End</span>
+            <input onChange={(event) => updateTaskField('endTime', event.target.value)} type="time" value={taskForm.endTime} />
+          </label>
+        </div>
+        <div className="task-schedule-list">
+          {tasks.length ? tasks.map((task) => (
+            <article className="scheduled-task-row" key={task.id}>
+              <label>
+                <input checked={task.done} onChange={() => toggleTask(task.id)} type="checkbox" />
+                <span>{task.title}</span>
+              </label>
+              <small>{formatTaskSchedule(task)}</small>
+              <div>
+                <a href={buildGoogleCalendarUrl(task)} rel="noreferrer" target="_blank">
+                  <CalendarDays size={15} />
+                  Google Calendar
+                </a>
+                <button onClick={() => removeTask(task.id)} type="button">Remove</button>
+              </div>
+            </article>
+          )) : (
+            <p className="task-empty-copy">No scheduled tasks yet.</p>
+          )}
+        </div>
       </section>
 
-      <button className="primary-action save-note" onClick={() => saveNotes(notes, selectedTags)} type="button">
+      <section className="photo-box">
+        <div className="section-title">
+          <div>
+            <span className="eyebrow">Photos</span>
+            <h2>Work proof</h2>
+          </div>
+          <button className="drive-button" onClick={openDrive} type="button">
+            <Upload size={16} />
+            Save to Drive
+          </button>
+        </div>
+        <label className="photo-upload-tile">
+          <Plus size={24} />
+          <span>Upload photos</span>
+          <input accept="image/*" multiple onChange={addPhotos} type="file" />
+        </label>
+        {photoStatus ? <p className="photo-status">{photoStatus}</p> : null}
+        {photos.length ? (
+          <div className="photo-preview-grid">
+            {photos.map((photo) => (
+              <figure key={photo.id}>
+                <img alt={photo.name} src={photo.dataUrl} />
+                <button onClick={() => removePhoto(photo.id)} type="button">Remove</button>
+              </figure>
+            ))}
+          </div>
+        ) : null}
+      </section>
+
+      <button className="primary-action save-note" onClick={() => saveNotes(notes, selectedTags, tasks, photos)} type="button">
         <Save size={18} />
         Save Note
       </button>
@@ -1969,10 +2213,12 @@ function AuthScreen({ error, loading, mode, onGuest, onSubmit, setMode }) {
   const [guestName, setGuestName] = useState('');
   const [guestNameError, setGuestNameError] = useState('');
   const [guestNameOpen, setGuestNameOpen] = useState(false);
+  const [googleNotice, setGoogleNotice] = useState('');
   const isSignup = mode === 'signup';
 
   function updateField(field, value) {
     setForm((current) => ({ ...current, [field]: value }));
+    setGoogleNotice('');
   }
 
   function submit(event) {
@@ -2004,7 +2250,18 @@ function AuthScreen({ error, loading, mode, onGuest, onSubmit, setMode }) {
         </div>
         <div>
           <h1>{isSignup ? 'Create Account' : 'Welcome back'}</h1>
-          <p>{isSignup ? 'Set up your WorkPulse profile' : 'Login to continue tracking time'}</p>
+          <p>{isSignup ? 'Set up your WorkPulse profile' : 'Sign in with employee ID, name, or email'}</p>
+        </div>
+      </div>
+
+      <div className="auth-illustration" aria-hidden="true">
+        <div className="auth-orbit">
+          <Clock3 size={34} />
+        </div>
+        <div className="auth-mini-card">
+          <span>Today</span>
+          <strong>08:00</strong>
+          <small>Target hours</small>
         </div>
       </div>
 
@@ -2040,11 +2297,11 @@ function AuthScreen({ error, loading, mode, onGuest, onSubmit, setMode }) {
         ) : null}
 
         <label>
-          <Mail size={17} />
+          {isSignup ? <Mail size={17} /> : <Shield size={17} />}
           <input
             onChange={(event) => updateField('email', event.target.value)}
-            placeholder="Email"
-            type="email"
+            placeholder={isSignup ? 'Email' : 'Employee ID, name, or email'}
+            type={isSignup ? 'email' : 'text'}
             value={form.email}
           />
         </label>
@@ -2065,6 +2322,13 @@ function AuthScreen({ error, loading, mode, onGuest, onSubmit, setMode }) {
           {loading ? 'Please wait...' : isSignup ? 'Sign Up' : 'Login'}
         </button>
       </form>
+
+      <div className="auth-divider"><span>or</span></div>
+      <button className="google-auth-button" onClick={() => setGoogleNotice('Google sign-in needs OAuth setup. Use employee ID and password for now.')} type="button">
+        <span>G</span>
+        Continue with Google
+      </button>
+      {googleNotice ? <p className="form-note">{googleNotice}</p> : null}
 
       <div className="guest-entry">
         <span>or continue without an account</span>
@@ -2705,11 +2969,13 @@ export default function App() {
     }
   }
 
-  async function saveNotes(notes, focus) {
+  async function saveNotes(notes, focus, tasks = [], photos = []) {
     setActionError('');
+    const cleanTasks = normalizeTasks(tasks);
+    const cleanPhotos = normalizePhotos(photos);
 
     if (isGuest) {
-      updateGuestToday((record) => ({ ...record, notes, focus }));
+      updateGuestToday((record) => ({ ...record, notes, focus, tasks: cleanTasks, photos: cleanPhotos }));
       setActiveView('home');
       return;
     }
@@ -2718,7 +2984,7 @@ export default function App() {
       const data = await apiRequest(`/api/records/${dateKey}/notes`, {
         method: 'PUT',
         token,
-        body: { focus, notes },
+        body: { focus, notes, photos: cleanPhotos, tasks: cleanTasks },
       });
       setRecords(data.records ?? {});
       setActiveView('home');
@@ -2963,7 +3229,7 @@ export default function App() {
           {activeView === 'reports' ? <ReportsScreen records={records} today={today} /> : null}
           {activeView === 'profile' ? <ProfileScreen clearAll={requestClearAll} logout={logout} setActiveView={navigateView} theme={theme} toggleTheme={toggleTheme} user={user} /> : null}
           {activeView === 'notifications' ? <NotificationsScreen /> : null}
-          {activeView === 'notes' ? <NotesScreen record={todayRecord} saveNotes={saveNotes} /> : null}
+          {activeView === 'notes' ? <NotesScreen dateKey={dateKey} record={todayRecord} saveNotes={saveNotes} /> : null}
           {activeView === 'location' ? (
             <LocationScreen
               distanceMeters={distanceMeters}
