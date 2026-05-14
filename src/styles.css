@@ -3222,8 +3222,7 @@ button:disabled {
 }
 
 .scheduled-task-row a,
-.scheduled-task-row button,
-.drive-button {
+.scheduled-task-row button {
   display: inline-flex;
   min-height: 36px;
   align-items: center;
@@ -3248,10 +3247,16 @@ button:disabled {
   gap: 12px;
 }
 
+.photo-section-title {
+  min-height: 36px;
+}
+
 .photo-upload-tile {
-  display: grid;
-  min-height: 84px;
-  place-items: center;
+  display: inline-flex;
+  width: 100%;
+  min-height: 52px;
+  align-items: center;
+  justify-content: center;
   gap: 6px;
   border: 1px dashed #c6cbff;
   border-radius: 12px;
@@ -3553,8 +3558,7 @@ button:disabled {
   background: #101827;
 }
 
-:root[data-theme="dark"] .scheduled-task-row a,
-:root[data-theme="dark"] .drive-button {
+:root[data-theme="dark"] .scheduled-task-row a {
   background: #242047;
   color: #d7d4ff;
 }

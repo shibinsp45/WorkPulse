@@ -25,7 +25,6 @@ import {
   Shield,
   Sun,
   Timer,
-  Upload,
   User,
 } from 'lucide-react';
 
@@ -2081,16 +2080,6 @@ function NotesScreen({ dateKey, record, saveNotes }) {
     setPhotos((current) => current.filter((photo) => photo.id !== photoId));
   }
 
-  function openDrive() {
-    if (!photos.length) {
-      setPhotoStatus('Upload a photo first, then save your note.');
-      return;
-    }
-
-    window.open('https://drive.google.com/drive/my-drive', '_blank', 'noopener,noreferrer');
-    setPhotoStatus('Photos are saved in WorkPulse. Upload them to Drive from the opened tab.');
-  }
-
   return (
     <div className="notes-screen">
       <label className="note-field">
@@ -2167,15 +2156,10 @@ function NotesScreen({ dateKey, record, saveNotes }) {
       </section>
 
       <section className="photo-box">
-        <div className="section-title">
+        <div className="section-title photo-section-title">
           <div>
-            <span className="eyebrow">Photos</span>
-            <h2>Work proof</h2>
+            <h2>Photos</h2>
           </div>
-          <button className="drive-button" onClick={openDrive} type="button">
-            <Upload size={16} />
-            Save to Drive
-          </button>
         </div>
         <label className="photo-upload-tile">
           <Plus size={24} />
