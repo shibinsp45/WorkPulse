@@ -615,6 +615,7 @@ function WorkPulseLogo({ compact = false }) {
 function AppHeader({ activeView, now, onBack, setActiveView, user }) {
   const isBackView = DETAIL_VIEWS.has(activeView);
   const isHomeView = activeView === 'home';
+  const showCompactLocation = activeView !== 'notifications';
   const title = VIEW_TITLES[activeView] ?? 'WorkPulse';
   const workplace = getWorkplaceName(user?.workplace);
 
@@ -622,11 +623,13 @@ function AppHeader({ activeView, now, onBack, setActiveView, user }) {
     return (
       <header className={isBackView ? 'app-header compact-header detail-header' : 'app-header compact-header'}>
         <div className="compact-header-top">
-          <button className="location-chip location-chip-button" onClick={() => setActiveView('location')} type="button" aria-label="Open workplace location">
-            <MapPin size={13} />
-            {workplace}
-            <ChevronDown size={13} />
-          </button>
+          {showCompactLocation ? (
+            <button className="location-chip location-chip-button" onClick={() => setActiveView('location')} type="button" aria-label="Open workplace location">
+              <MapPin size={13} />
+              {workplace}
+              <ChevronDown size={13} />
+            </button>
+          ) : null}
           <div className="header-actions compact-actions">
             <button className="header-icon has-dot" onClick={() => setActiveView('notifications')} type="button" aria-label="Open notifications">
               <Bell size={18} />
