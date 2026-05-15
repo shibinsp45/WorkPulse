@@ -34,6 +34,7 @@ const GUEST_KEY = 'workpulse-guest-session';
 const GUEST_RECORDS_KEY = 'workpulse-guest-records';
 const GUEST_USER_KEY = 'workpulse-guest-user';
 const ONBOARDING_KEY = 'workpulse-onboarding-v2-done';
+const TERMS_KEY = 'workpulse-terms-v1-accepted';
 const THEME_KEY = 'workpulse-theme';
 const DASHBOARD_ORDER_KEY = 'workpulse-dashboard-order';
 const TARGET_MS = 8 * 60 * 60 * 1000;
@@ -1434,7 +1435,6 @@ function ProfileScreen({ clearAll, logout, setActiveView, theme, toggleTheme, us
     { icon: Bell, label: 'Notifications', action: () => setActiveView('notifications') },
     { icon: Shield, label: 'Data and Privacy', action: () => setActiveView('privacy') },
     { icon: Download, label: 'Export Data', action: () => setActiveView('export') },
-    { icon: HelpCircle, label: 'Help and Support', action: () => setActiveView('support') },
   ];
 
   return (
@@ -1471,6 +1471,11 @@ function ProfileScreen({ clearAll, logout, setActiveView, theme, toggleTheme, us
         <button onClick={() => setActiveView('notes')} type="button">
           <FileText size={18} />
           <span>Work Notes</span>
+          <ChevronRight size={17} />
+        </button>
+        <button onClick={() => setActiveView('support')} type="button">
+          <HelpCircle size={18} />
+          <span>Help and Support</span>
           <ChevronRight size={17} />
         </button>
         <button className="logout-row" onClick={clearAll} type="button">
@@ -1670,13 +1675,65 @@ function HelpSupportScreen() {
   return (
     <div className="detail-screen">
       <DetailCard icon={HelpCircle} title="Help and Support">
-        <SummaryRow label="Punch In" value="Starts live timer" />
-        <SummaryRow label="Punch Out" value="Stops current session" />
-        <SummaryRow label="Manual Time" value="Adds missed sessions" />
-        <SummaryRow label="Location" value="Pin workplace for prompts" />
+        <p className="detail-copy">WorkPulse is a personal work-hour tracker. It stores your punch sessions, breaks, notes, tasks, photos, location pin, and reports for your own daily reference.</p>
+        <div className="support-doc-list">
+          <article>
+            <Timer size={18} />
+            <div>
+              <strong>Daily timer</strong>
+              <span>Use Punch In to start a session and Punch Out to close it. The live timer updates your worked time in real time.</span>
+            </div>
+          </article>
+          <article>
+            <Coffee size={18} />
+            <div>
+              <strong>Break tracking</strong>
+              <span>Use Mark Break while punched in, then End Break when you return. Break time is separated from worked hours.</span>
+            </div>
+          </article>
+          <article>
+            <Clock3 size={18} />
+            <div>
+              <strong>Missing punches</strong>
+              <span>Open Add Missing Punch when you forgot to record time. WorkPulse recalculates daily, weekly, timeline, and reports.</span>
+            </div>
+          </article>
+          <article>
+            <CalendarDays size={18} />
+            <div>
+              <strong>Tasks and calendar</strong>
+              <span>Add scheduled tasks in Notes. The Google Calendar link opens a ready-made event you can save to your calendar.</span>
+            </div>
+          </article>
+          <article>
+            <MapPin size={18} />
+            <div>
+              <strong>Location prompts</strong>
+              <span>Save your workplace location to get reminders when you arrive or leave the area. Location access is optional.</span>
+            </div>
+          </article>
+          <article>
+            <Download size={18} />
+            <div>
+              <strong>Reports and export</strong>
+              <span>Reports summarize your hours. Export your data as PDF, Excel, or JSON from Profile.</span>
+            </div>
+          </article>
+        </div>
       </DetailCard>
-      <DetailCard icon={CircleAlert} title="Tips">
-        <p className="detail-copy">Use manual time only for missed punches. If you add overlapping time anyway, totals may double count that period.</p>
+      <DetailCard icon={Shield} title="Terms and Privacy Summary">
+        <ul className="terms-list">
+          <li>WorkPulse is for personal time tracking and is not a payroll or legal attendance system.</li>
+          <li>Guest mode stores data on this browser. Signed-in mode stores records in the local WorkPulse backend.</li>
+          <li>Location is used only for workplace prompts when you allow browser location access.</li>
+          <li>Manual overlapping time can double count hours, so use Add Anyway only when you mean it.</li>
+          <li>Photos are saved inside your WorkPulse record in this app unless you manually move them elsewhere.</li>
+        </ul>
+      </DetailCard>
+      <DetailCard icon={CircleAlert} title="Quick Tips">
+        <SummaryRow label="Best daily flow" value="Punch In, Mark Break, End Break, Punch Out" />
+        <SummaryRow label="Forgot a time" value="Use Add Missing Punch" />
+        <SummaryRow label="Need backup" value="Export PDF, Excel, or JSON" />
       </DetailCard>
     </div>
   );
@@ -2351,6 +2408,20 @@ function SplashScreen() {
   );
 }
 
+function LoadingScreen() {
+  return (
+    <main className="loading-screen">
+      <WorkPulseLogo compact />
+      <div>
+        <h1>Opening WorkPulse</h1>
+        <p>Preparing your dashboard, records, and saved settings.</p>
+      </div>
+      <span className="loading-pill">Secure local workspace</span>
+      <span className="loading-bar" aria-hidden="true" />
+    </main>
+  );
+}
+
 function OnboardingScreen({ onDone }) {
   const slides = [
     {
@@ -2368,14 +2439,22 @@ function OnboardingScreen({ onDone }) {
       title: 'Save your workplace',
       body: 'Add a location manually or fetch it from your device when you allow access.',
     },
+    {
+      icon: Shield,
+      title: 'Terms and privacy',
+      body: 'WorkPulse is for personal tracking. Please review and accept the basics before continuing.',
+      terms: true,
+    },
   ];
   const [step, setStep] = useState(0);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const slide = slides[step];
   const Icon = slide.icon;
   const isLast = step === slides.length - 1;
 
   function next() {
     if (isLast) {
+      if (!acceptedTerms) return;
       onDone();
       return;
     }
@@ -2383,11 +2462,19 @@ function OnboardingScreen({ onDone }) {
     setStep((current) => current + 1);
   }
 
+  function skipToTerms() {
+    setStep(slides.length - 1);
+  }
+
   return (
-    <main className="onboarding-screen">
+    <main className={slide.terms ? 'onboarding-screen terms-step' : 'onboarding-screen'}>
       <div className="onboarding-top">
         <WorkPulseLogo compact />
-        <button onClick={onDone} type="button">Skip</button>
+        {slide.terms ? (
+          <span className="onboarding-step-label">Required</span>
+        ) : (
+          <button onClick={skipToTerms} type="button">Skip</button>
+        )}
       </div>
 
       <section className="onboarding-visual">
@@ -2404,9 +2491,31 @@ function OnboardingScreen({ onDone }) {
         </div>
         <h1>{slide.title}</h1>
         <p>{slide.body}</p>
+        {slide.terms ? (
+          <section className="onboarding-terms">
+            <div className="terms-card-head">
+              <Shield size={18} />
+              <strong>Before you continue</strong>
+            </div>
+            <ul>
+              <li>Your records are for personal time tracking, not payroll certification.</li>
+              <li>Guest records stay on this browser. Account records use the WorkPulse backend.</li>
+              <li>Location prompts work only when you allow browser location access.</li>
+              <li>You can export or clear your records from Profile anytime.</li>
+            </ul>
+            <label>
+              <input
+                checked={acceptedTerms}
+                onChange={(event) => setAcceptedTerms(event.target.checked)}
+                type="checkbox"
+              />
+              <span>I agree to the WorkPulse terms and privacy basics.</span>
+            </label>
+          </section>
+        ) : null}
       </section>
 
-      <button className="primary-action onboarding-action" onClick={next} type="button">
+      <button className="primary-action onboarding-action" disabled={isLast && !acceptedTerms} onClick={next} type="button">
         {isLast ? 'Start WorkPulse' : 'Next'}
       </button>
     </main>
@@ -2552,7 +2661,10 @@ export default function App() {
   const [dashboardOrder, setDashboardOrder] = useState(() => readDashboardOrder());
   const [theme, setTheme] = useState(() => localStorage.getItem(THEME_KEY) ?? 'light');
   const [showSplash, setShowSplash] = useState(true);
-  const [showOnboarding, setShowOnboarding] = useState(() => localStorage.getItem(ONBOARDING_KEY) !== 'true');
+  const [showOnboarding, setShowOnboarding] = useState(() => (
+    localStorage.getItem(ONBOARDING_KEY) !== 'true'
+    || localStorage.getItem(TERMS_KEY) !== 'true'
+  ));
   const [authMode, setAuthMode] = useState('login');
   const [authError, setAuthError] = useState('');
   const [actionError, setActionError] = useState('');
@@ -2746,6 +2858,7 @@ export default function App() {
       });
       localStorage.setItem(TOKEN_KEY, data.token);
       localStorage.setItem(ONBOARDING_KEY, 'true');
+      localStorage.setItem(TERMS_KEY, 'true');
       localStorage.removeItem(GUEST_KEY);
       setToken(data.token);
       setIsGuest(false);
@@ -2768,6 +2881,7 @@ export default function App() {
     };
     localStorage.setItem(GUEST_KEY, 'true');
     localStorage.setItem(ONBOARDING_KEY, 'true');
+    localStorage.setItem(TERMS_KEY, 'true');
     localStorage.setItem(GUEST_USER_KEY, JSON.stringify(guestUser));
     localStorage.removeItem(TOKEN_KEY);
     setIsGuest(true);
@@ -3101,6 +3215,7 @@ export default function App() {
 
   function finishOnboarding() {
     localStorage.setItem(ONBOARDING_KEY, 'true');
+    localStorage.setItem(TERMS_KEY, 'true');
     setShowOnboarding(false);
   }
 
@@ -3136,13 +3251,13 @@ export default function App() {
     return (
       <main className="page">
         <section className="phone-shell intro-shell">
-          <div className="loading-screen">Loading WorkPulse...</div>
+          <LoadingScreen />
         </section>
       </main>
     );
   }
 
-  if (showOnboarding && !user) {
+  if (showOnboarding) {
     return (
       <main className="page">
         <section className="phone-shell intro-shell">
