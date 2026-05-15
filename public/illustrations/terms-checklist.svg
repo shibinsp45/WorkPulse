@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 300" role="img" aria-labelledby="title desc">
+  <title id="title">Terms and conditions checklist illustration</title>
+  <desc id="desc">A checklist document beside a shield with a check mark.</desc>
+  <defs>
+    <linearGradient id="shield" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#2775f6"/>
+      <stop offset="1" stop-color="#0750cf"/>
+    </linearGradient>
+    <linearGradient id="board" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#274b86"/>
+      <stop offset="1" stop-color="#14366b"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#173b76" flood-opacity=".16"/>
+    </filter>
+  </defs>
+  <path d="M65 213c-35-70 15-151 93-169 75-18 166 6 194 82 28 75-57 130-136 139-60 6-128-7-151-52Z" fill="#eaf3ff"/>
+  <g opacity=".36" fill="#c7dcff">
+    <circle cx="75" cy="108" r="3"/><circle cx="92" cy="88" r="3"/><circle cx="120" cy="70" r="3"/>
+    <circle cx="342" cy="90" r="3"/><circle cx="362" cy="120" r="3"/><circle cx="326" cy="216" r="3"/>
+  </g>
+  <g filter="url(#shadow)">
+    <rect x="115" y="65" width="154" height="190" rx="16" fill="url(#board)"/>
+    <rect x="128" y="84" width="128" height="154" rx="8" fill="#f9fbff"/>
+    <rect x="168" y="50" width="50" height="38" rx="12" fill="#2c5aa1"/>
+    <circle cx="193" cy="62" r="7" fill="#d9e8ff"/>
+    <text x="193" y="113" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="17" font-weight="900" fill="#234987">TERMS</text>
+    <g fill="none" stroke="#1768ea" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M150 138h14v14h-14z"/><path d="m153 144 4 4 10-12"/>
+      <path d="M150 170h14v14h-14z"/><path d="m153 176 4 4 10-12"/>
+      <path d="M150 202h14v14h-14z"/><path d="m153 208 4 4 10-12"/>
+    </g>
+    <g fill="#c8d7ed">
+      <rect x="178" y="139" width="54" height="5" rx="3"/>
+      <rect x="178" y="151" width="75" height="5" rx="3"/>
+      <rect x="178" y="171" width="64" height="5" rx="3"/>
+      <rect x="178" y="183" width="76" height="5" rx="3"/>
+      <rect x="178" y="203" width="54" height="5" rx="3"/>
+      <rect x="178" y="215" width="75" height="5" rx="3"/>
+    </g>
+  </g>
+  <g filter="url(#shadow)">
+    <path d="M272 128c34-9 57-26 57-26s23 17 57 26c-2 72-57 98-57 98s-55-26-57-98Z" fill="url(#shield)"/>
+    <path d="m307 162 18 18 38-48" fill="none" stroke="#fff" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <g>
+    <path d="M79 227c-8-28-3-50 13-66 15 22 14 45-3 71l-10-5Z" fill="#4dbb7a"/>
+    <path d="M99 232c-4-31 8-52 35-62 4 29-9 50-35 62Z" fill="#72cf97"/>
+    <rect x="75" y="226" width="39" height="18" rx="5" fill="#25527f"/>
+  </g>
+</svg>

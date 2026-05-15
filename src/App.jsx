@@ -33,7 +33,7 @@ const TOKEN_KEY = 'workpulse-auth-token';
 const GUEST_KEY = 'workpulse-guest-session';
 const GUEST_RECORDS_KEY = 'workpulse-guest-records';
 const GUEST_USER_KEY = 'workpulse-guest-user';
-const ONBOARDING_KEY = 'workpulse-onboarding-v2-done';
+const ONBOARDING_KEY = 'workpulse-onboarding-v3-done';
 const TERMS_KEY = 'workpulse-terms-v1-accepted';
 const THEME_KEY = 'workpulse-theme';
 const DASHBOARD_ORDER_KEY = 'workpulse-dashboard-order';
@@ -2425,24 +2425,21 @@ function LoadingScreen() {
 function OnboardingScreen({ onDone }) {
   const slides = [
     {
+      image: '/illustrations/onboarding-attendance.svg',
+      eyebrow: 'Attendance made simple',
+      title: 'Welcome to',
+      accent: 'Attendance Management',
+      body: 'Track attendance, manage your day, and keep your work hours organized effortlessly.',
+    },
+    {
       icon: Timer,
-      title: 'Track work hours',
-      body: 'Punch in and out with a clean daily timer built for personal work tracking.',
+      eyebrow: 'WorkPulse',
+      title: 'Track every work session',
+      body: 'Punch in, punch out, mark breaks, and watch your daily total update in real time.',
     },
     {
-      icon: Coffee,
-      title: 'Smart break checks',
-      body: 'When you return after a gap, WorkPulse asks whether that time was a break.',
-    },
-    {
-      icon: MapPin,
-      title: 'Save your workplace',
-      body: 'Add a location manually or fetch it from your device when you allow access.',
-    },
-    {
-      icon: Shield,
-      title: 'Terms and privacy',
-      body: 'WorkPulse is for personal tracking. Please review and accept the basics before continuing.',
+      image: '/illustrations/terms-checklist.svg',
+      title: 'Terms and Conditions',
       terms: true,
     },
   ];
@@ -2466,57 +2463,96 @@ function OnboardingScreen({ onDone }) {
     setStep(slides.length - 1);
   }
 
+  function goBack() {
+    setStep((current) => Math.max(0, current - 1));
+  }
+
   return (
     <main className={slide.terms ? 'onboarding-screen terms-step' : 'onboarding-screen'}>
       <div className="onboarding-top">
-        <WorkPulseLogo compact />
         {slide.terms ? (
-          <span className="onboarding-step-label">Required</span>
+          <>
+            <button className="onboarding-back-button" onClick={goBack} type="button" aria-label="Go back">
+              <ArrowLeft size={19} />
+            </button>
+            <h2>Terms and Conditions</h2>
+            <span className="onboarding-top-spacer" aria-hidden="true" />
+          </>
         ) : (
-          <button onClick={skipToTerms} type="button">Skip</button>
+          <>
+            <WorkPulseLogo compact />
+            <button className="onboarding-skip" onClick={skipToTerms} type="button">Skip</button>
+          </>
         )}
       </div>
 
+      {!slide.terms ? (
+        <section className="onboarding-copy">
+          {slide.eyebrow ? <span className="onboarding-eyebrow">{slide.eyebrow}</span> : null}
+          <h1>
+            {slide.title}
+            {slide.accent ? <span>{slide.accent}</span> : null}
+          </h1>
+          <p>{slide.body}</p>
+        </section>
+      ) : null}
+
       <section className="onboarding-visual">
-        <div className="onboarding-orbit">
-          <Icon size={48} />
-        </div>
+        {slide.image ? (
+          <img className={slide.terms ? 'onboarding-image terms-image' : 'onboarding-image'} src={slide.image} alt="" />
+        ) : (
+          <div className="onboarding-orbit">
+            <Icon size={48} />
+          </div>
+        )}
       </section>
 
-      <section className="onboarding-copy">
-        <div className="onboarding-dots">
+      {!slide.terms ? (
+        <div className="onboarding-dots" aria-label={`Step ${step + 1} of ${slides.length}`}>
           {slides.map((item, index) => (
             <span className={index === step ? 'active' : ''} key={item.title} />
           ))}
         </div>
-        <h1>{slide.title}</h1>
-        <p>{slide.body}</p>
-        {slide.terms ? (
-          <section className="onboarding-terms">
-            <div className="terms-card-head">
-              <Shield size={18} />
-              <strong>Before you continue</strong>
-            </div>
-            <ul>
-              <li>Your records are for personal time tracking, not payroll certification.</li>
-              <li>Guest records stay on this browser. Account records use the WorkPulse backend.</li>
-              <li>Location prompts work only when you allow browser location access.</li>
-              <li>You can export or clear your records from Profile anytime.</li>
-            </ul>
-            <label>
-              <input
-                checked={acceptedTerms}
-                onChange={(event) => setAcceptedTerms(event.target.checked)}
-                type="checkbox"
-              />
-              <span>I agree to the WorkPulse terms and privacy basics.</span>
-            </label>
-          </section>
-        ) : null}
-      </section>
+      ) : null}
+
+      {slide.terms ? (
+        <section className="terms-document">
+          <p className="terms-updated">Last updated: May 15, 2026</p>
+          <div className="terms-copy-block">
+            <p>
+              Welcome to WorkPulse. By accessing or using this personal attendance tracking app,
+              you agree to the terms below.
+            </p>
+            <h3>1. Acceptance of Terms</h3>
+            <p>
+              By using this application, you confirm that you accept these terms and will use the
+              app only for lawful personal time tracking.
+            </p>
+            <h3>2. Use of the Application</h3>
+            <p>
+              WorkPulse helps you record punch-in, punch-out, break, location, notes, and report
+              information. Records should be reviewed before using them for formal reporting.
+            </p>
+            <h3>3. Privacy and Data</h3>
+            <p>
+              Guest data stays in this browser. Account data is saved through the WorkPulse backend.
+              Location access works only after browser permission is granted.
+            </p>
+          </div>
+          <label className="terms-accept-row">
+            <input
+              checked={acceptedTerms}
+              onChange={(event) => setAcceptedTerms(event.target.checked)}
+              type="checkbox"
+            />
+            <span>I have read and agree to the Terms and Conditions.</span>
+          </label>
+        </section>
+      ) : null}
 
       <button className="primary-action onboarding-action" disabled={isLast && !acceptedTerms} onClick={next} type="button">
-        {isLast ? 'Start WorkPulse' : 'Next'}
+        <span>{isLast ? 'Agree and Continue' : 'Next'}</span>
+        {!isLast ? <ChevronRight size={20} /> : null}
       </button>
     </main>
   );
