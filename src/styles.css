@@ -5049,3 +5049,400 @@ button:disabled {
   border-color: rgba(255, 255, 255, 0.08);
   background: rgba(15, 23, 42, 0.42);
 }
+
+/* Glassmorphism system pass */
+:root {
+  --glass-surface: rgba(255, 255, 255, 0.58);
+  --glass-surface-strong: rgba(255, 255, 255, 0.76);
+  --glass-surface-soft: rgba(255, 255, 255, 0.38);
+  --glass-field: rgba(255, 255, 255, 0.54);
+  --glass-border: rgba(255, 255, 255, 0.64);
+  --glass-border-soft: rgba(85, 72, 244, 0.16);
+  --glass-shadow: 0 22px 70px rgba(31, 41, 71, 0.14);
+  --glass-shadow-soft: 0 14px 36px rgba(31, 41, 71, 0.09);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.74);
+  --glass-blur: 22px;
+  --card: rgba(255, 255, 255, 0.62);
+  --line: rgba(91, 102, 130, 0.16);
+}
+
+:root[data-theme="dark"] {
+  --glass-surface: rgba(20, 30, 49, 0.64);
+  --glass-surface-strong: rgba(25, 36, 58, 0.78);
+  --glass-surface-soft: rgba(24, 34, 53, 0.46);
+  --glass-field: rgba(12, 20, 34, 0.48);
+  --glass-border: rgba(255, 255, 255, 0.13);
+  --glass-border-soft: rgba(137, 129, 255, 0.2);
+  --glass-shadow: 0 22px 70px rgba(0, 0, 0, 0.28);
+  --glass-shadow-soft: 0 14px 36px rgba(0, 0, 0, 0.2);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  --card: rgba(20, 30, 49, 0.66);
+  --line: rgba(180, 191, 214, 0.16);
+}
+
+body {
+  background:
+    linear-gradient(135deg, rgba(85, 72, 244, 0.14), transparent 34%),
+    linear-gradient(225deg, rgba(25, 191, 120, 0.12), transparent 36%),
+    linear-gradient(180deg, #f8faff 0%, #eef2f8 100%);
+  background-attachment: fixed;
+}
+
+:root[data-theme="dark"] body {
+  background:
+    linear-gradient(135deg, rgba(85, 72, 244, 0.22), transparent 36%),
+    linear-gradient(225deg, rgba(25, 191, 120, 0.1), transparent 34%),
+    linear-gradient(180deg, #0b1220 0%, #111a2d 100%);
+}
+
+.phone-shell,
+.app-shell,
+.detail-shell {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.18), transparent 42%),
+    rgba(246, 248, 252, 0.62);
+  backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+}
+
+:root[data-theme="dark"] .phone-shell,
+:root[data-theme="dark"] .app-shell,
+:root[data-theme="dark"] .detail-shell {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.05), transparent 42%),
+    rgba(10, 18, 32, 0.72);
+}
+
+.glass-card,
+.target-card,
+.summary-card,
+.progress-overview-card,
+.notes-todo-card,
+.manual-entry-card,
+.timeline-card,
+.history-card,
+.insight-card,
+.chart-card,
+.notification-list,
+.settings-list,
+.note-field,
+.focus-section,
+.task-scheduler-card,
+.photo-box,
+.manual-shortcut-card,
+.manual-card,
+.manual-field,
+.manual-preview,
+.location-card,
+.location-status-card,
+.map-preview,
+.coordinate-card,
+.location-field,
+.danger-card,
+.detail-card,
+.dashboard-live-card,
+.quick-actions-card,
+.weekly-overview-card,
+.task-list-card,
+.note-dashboard-card,
+.todo-notes-card,
+.analytics-hero,
+.auth-brand,
+.auth-illustration,
+.auth-toggle,
+.auth-form label,
+.guest-name-field,
+.loading-pill,
+.onboarding-visual,
+.terms-accept-row,
+.confirm-card {
+  border: 1px solid var(--glass-border);
+  background: var(--glass-surface);
+  box-shadow: var(--glass-shadow), var(--glass-highlight);
+  backdrop-filter: blur(var(--glass-blur)) saturate(155%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(155%);
+}
+
+.metric-card,
+.quick-action-card,
+.todo-pane,
+.note-preview-card,
+.weekly-summary-card,
+.zone-status-card,
+.shift-info-card,
+.chart-summary-strip div,
+.date-chip,
+.scheduled-task-row,
+.note-preview,
+.workplace-live,
+.layout-toolbar,
+.timeline-shift-card,
+.timeline-shift-grid,
+.notification-toolbar,
+.profile-hero,
+.empty-clock-card {
+  border: 1px solid var(--glass-border-soft);
+  background: var(--glass-surface-soft);
+  box-shadow: var(--glass-shadow-soft), var(--glass-highlight);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+}
+
+.bottom-nav,
+.app-shell .bottom-nav,
+.app-shell.detail-shell .bottom-nav {
+  border-color: var(--glass-border);
+  background: var(--glass-surface-strong);
+  box-shadow: 0 -18px 44px rgba(31, 41, 71, 0.12), var(--glass-highlight);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+}
+
+.header-icon,
+.header-action,
+.dashboard-date-pill,
+.location-chip,
+.date-chip,
+.pin-button,
+.location-toggle,
+.location-inline-action,
+.section-actions button,
+.section-title button,
+.month-title button,
+.timeline-calendar-button,
+.layout-toolbar button,
+.manual-inline-card button,
+.manual-shortcut-card button,
+.todo-pane-title button,
+.notes-open-action,
+.chart-toggle,
+.chart-toggle button.active,
+.segment button.active,
+.secondary-action,
+.google-auth-button,
+.guest-entry button,
+.notification-toolbar button,
+.focus-tags button,
+.todo-tags span,
+.scheduled-task-row a,
+.scheduled-task-row button,
+.photo-upload-tile,
+.manual-alert button {
+  border: 1px solid var(--glass-border-soft);
+  background: var(--glass-surface-strong);
+  box-shadow: var(--glass-shadow-soft), var(--glass-highlight);
+  backdrop-filter: blur(14px) saturate(150%);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+}
+
+input,
+textarea,
+.auth-form input,
+.guest-name-field input,
+.manual-field input,
+.location-field input,
+.note-field textarea,
+.task-title-field input,
+.task-schedule-grid input,
+.schedule-field input {
+  border-color: var(--glass-border-soft);
+  background: var(--glass-field);
+  box-shadow: var(--glass-highlight);
+  backdrop-filter: blur(12px) saturate(145%);
+  -webkit-backdrop-filter: blur(12px) saturate(145%);
+}
+
+.primary-action,
+.ready-punch-button,
+.onboarding-action,
+.danger-card button {
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 0 18px 44px rgba(85, 72, 244, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.32);
+}
+
+.primary-action.danger,
+.ready-punch-button.danger,
+.danger-card button {
+  box-shadow: 0 18px 44px rgba(240, 68, 56, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+
+.profile-hero {
+  background:
+    linear-gradient(135deg, rgba(111, 99, 255, 0.76), rgba(85, 72, 244, 0.56)),
+    var(--glass-surface);
+}
+
+.dashboard-live-card {
+  background:
+    linear-gradient(145deg, rgba(85, 72, 244, 0.08), transparent 48%),
+    var(--glass-surface);
+}
+
+.quick-actions-card,
+.todo-notes-card,
+.weekly-overview-card {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.2), transparent 42%),
+    var(--glass-surface);
+}
+
+.timer-orbit,
+.progress-ring,
+.progress-ring.large {
+  --timer-track: rgba(100, 116, 139, 0.18);
+  background:
+    radial-gradient(circle at center, var(--glass-surface-strong) 0 58%, transparent 59%),
+    conic-gradient(var(--timer-ring, var(--primary)) 0 var(--timer-progress, var(--progress)), var(--timer-track, rgba(100, 116, 139, 0.18)) var(--timer-progress, var(--progress)) 100%);
+  box-shadow:
+    inset 0 0 0 12px rgba(85, 72, 244, 0.08),
+    0 18px 50px rgba(85, 72, 244, 0.14);
+}
+
+.progress-ring {
+  background:
+    radial-gradient(circle 21px, var(--glass-surface-strong) 98%, transparent 100%),
+    conic-gradient(var(--green) var(--progress), rgba(100, 116, 139, 0.18) 0);
+}
+
+.progress-ring.large {
+  background:
+    radial-gradient(circle 29px, var(--glass-surface-strong) 98%, transparent 100%),
+    conic-gradient(var(--green) var(--progress), rgba(100, 116, 139, 0.18) 0);
+}
+
+.map-canvas {
+  background:
+    linear-gradient(120deg, rgba(85, 72, 244, 0.12), transparent 34%),
+    linear-gradient(220deg, rgba(25, 191, 120, 0.12), transparent 34%),
+    var(--glass-surface-soft);
+}
+
+.map-road,
+.map-pin {
+  background: var(--glass-surface-strong);
+  backdrop-filter: blur(12px) saturate(145%);
+  -webkit-backdrop-filter: blur(12px) saturate(145%);
+}
+
+.modal-backdrop {
+  background: rgba(15, 23, 42, 0.2);
+  backdrop-filter: blur(18px) saturate(135%);
+  -webkit-backdrop-filter: blur(18px) saturate(135%);
+}
+
+.notice-icon,
+.metric-icon,
+.quick-action-card span,
+.manual-shortcut-icon,
+.manual-entry-icon,
+.clock-illustration,
+.confirm-icon,
+.location-map {
+  background: rgba(85, 72, 244, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+
+.quick-action-card.green span,
+.notice-icon.green {
+  background: rgba(25, 191, 120, 0.14);
+}
+
+.quick-action-card.orange span,
+.notice-icon.orange {
+  background: rgba(245, 158, 11, 0.15);
+}
+
+.notice-icon.red,
+.confirm-icon.danger {
+  background: rgba(240, 68, 56, 0.14);
+}
+
+:root[data-theme="dark"] .bottom-nav,
+:root[data-theme="dark"] .app-shell .bottom-nav,
+:root[data-theme="dark"] .app-shell.detail-shell .bottom-nav,
+:root[data-theme="dark"] .header-icon,
+:root[data-theme="dark"] .header-action,
+:root[data-theme="dark"] .dashboard-date-pill,
+:root[data-theme="dark"] .location-chip,
+:root[data-theme="dark"] .date-chip,
+:root[data-theme="dark"] .pin-button,
+:root[data-theme="dark"] .location-toggle,
+:root[data-theme="dark"] .location-inline-action,
+:root[data-theme="dark"] .section-actions button,
+:root[data-theme="dark"] .section-title button,
+:root[data-theme="dark"] .month-title button,
+:root[data-theme="dark"] .timeline-calendar-button,
+:root[data-theme="dark"] .layout-toolbar button,
+:root[data-theme="dark"] .manual-inline-card button,
+:root[data-theme="dark"] .manual-shortcut-card button,
+:root[data-theme="dark"] .todo-pane-title button,
+:root[data-theme="dark"] .notes-open-action,
+:root[data-theme="dark"] .chart-toggle,
+:root[data-theme="dark"] .chart-toggle button.active,
+:root[data-theme="dark"] .segment button.active,
+:root[data-theme="dark"] .secondary-action,
+:root[data-theme="dark"] .google-auth-button,
+:root[data-theme="dark"] .guest-entry button,
+:root[data-theme="dark"] .notification-toolbar button,
+:root[data-theme="dark"] .focus-tags button,
+:root[data-theme="dark"] .todo-tags span,
+:root[data-theme="dark"] .scheduled-task-row a,
+:root[data-theme="dark"] .scheduled-task-row button,
+:root[data-theme="dark"] .photo-upload-tile,
+:root[data-theme="dark"] .manual-alert button {
+  background: var(--glass-surface-strong);
+  color: var(--ink);
+}
+
+:root[data-theme="dark"] .metric-card,
+:root[data-theme="dark"] .quick-action-card,
+:root[data-theme="dark"] .todo-pane,
+:root[data-theme="dark"] .note-preview-card,
+:root[data-theme="dark"] .weekly-summary-card,
+:root[data-theme="dark"] .zone-status-card,
+:root[data-theme="dark"] .shift-info-card,
+:root[data-theme="dark"] .chart-summary-strip div,
+:root[data-theme="dark"] .scheduled-task-row,
+:root[data-theme="dark"] .note-preview,
+:root[data-theme="dark"] .workplace-live,
+:root[data-theme="dark"] .layout-toolbar,
+:root[data-theme="dark"] .timeline-shift-card,
+:root[data-theme="dark"] .timeline-shift-grid,
+:root[data-theme="dark"] .notification-toolbar,
+:root[data-theme="dark"] .empty-clock-card {
+  background: var(--glass-surface-soft);
+}
+
+:root[data-theme="dark"] .dashboard-live-card,
+:root[data-theme="dark"] .quick-actions-card,
+:root[data-theme="dark"] .weekly-overview-card,
+:root[data-theme="dark"] .task-list-card,
+:root[data-theme="dark"] .note-dashboard-card,
+:root[data-theme="dark"] .todo-notes-card,
+:root[data-theme="dark"] .analytics-hero,
+:root[data-theme="dark"] .manual-card,
+:root[data-theme="dark"] .manual-field,
+:root[data-theme="dark"] .manual-preview,
+:root[data-theme="dark"] .location-card,
+:root[data-theme="dark"] .location-status-card,
+:root[data-theme="dark"] .map-preview,
+:root[data-theme="dark"] .coordinate-card,
+:root[data-theme="dark"] .location-field,
+:root[data-theme="dark"] .note-field,
+:root[data-theme="dark"] .focus-section,
+:root[data-theme="dark"] .task-scheduler-card,
+:root[data-theme="dark"] .photo-box,
+:root[data-theme="dark"] .confirm-card,
+:root[data-theme="dark"] .auth-brand,
+:root[data-theme="dark"] .auth-illustration,
+:root[data-theme="dark"] .auth-toggle,
+:root[data-theme="dark"] .auth-form label,
+:root[data-theme="dark"] .guest-name-field,
+:root[data-theme="dark"] .onboarding-visual,
+:root[data-theme="dark"] .terms-accept-row {
+  background: var(--glass-surface);
+}
+
+:root[data-theme="dark"] .modal-backdrop {
+  background: rgba(2, 6, 23, 0.38);
+}
