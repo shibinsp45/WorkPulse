@@ -5446,3 +5446,46 @@ textarea,
 :root[data-theme="dark"] .modal-backdrop {
   background: rgba(2, 6, 23, 0.38);
 }
+
+/* Cleaner employee auth welcome screen */
+.auth-screen .auth-brand,
+.auth-screen .auth-illustration,
+.auth-screen .auth-toggle,
+.auth-screen .auth-form label,
+.auth-screen .guest-name-field {
+  border-color: transparent;
+}
+
+.auth-screen .auth-brand {
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.auth-screen .auth-illustration {
+  box-shadow: var(--glass-shadow-soft);
+}
+
+.auth-screen .auth-form label,
+.auth-screen .guest-name-field {
+  background: var(--glass-field);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.auth-screen .auth-form label:focus-within,
+.auth-screen .guest-name-field:focus-within {
+  box-shadow: 0 0 0 3px rgba(85, 72, 244, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.auth-screen .auth-divider {
+  margin: -2px 0;
+}
+
+.auth-screen .guest-entry {
+  margin-top: 0;
+}
+
+:root[data-theme="dark"] .auth-screen .auth-brand {
+  background: transparent;
+}

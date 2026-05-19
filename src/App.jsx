@@ -16,7 +16,6 @@ import {
   Home,
   GripVertical,
   LockKeyhole,
-  Mail,
   LogOut,
   MapPin,
   Moon,
@@ -2248,18 +2247,15 @@ function AuthScreen({ error, loading, mode, onGuest, onSubmit, setMode }) {
   const [form, setForm] = useState({
     name: '',
     employeeId: '',
-    email: '',
     password: '',
   });
   const [guestName, setGuestName] = useState('');
   const [guestNameError, setGuestNameError] = useState('');
   const [guestNameOpen, setGuestNameOpen] = useState(false);
-  const [googleNotice, setGoogleNotice] = useState('');
   const isSignup = mode === 'signup';
 
   function updateField(field, value) {
     setForm((current) => ({ ...current, [field]: value }));
-    setGoogleNotice('');
   }
 
   function submit(event) {
@@ -2291,7 +2287,7 @@ function AuthScreen({ error, loading, mode, onGuest, onSubmit, setMode }) {
         </div>
         <div>
           <h1>{isSignup ? 'Create Account' : 'Welcome back'}</h1>
-          <p>{isSignup ? 'Set up your WorkPulse profile' : 'Sign in with employee ID, name, or email'}</p>
+          <p>{isSignup ? 'Sign up with your employee ID and password' : 'Login with your employee ID and password'}</p>
         </div>
       </div>
 
@@ -2317,38 +2313,31 @@ function AuthScreen({ error, loading, mode, onGuest, onSubmit, setMode }) {
 
       <form className="auth-form" onSubmit={submit}>
         {isSignup ? (
-          <>
-            <label>
-              <User size={17} />
-              <input
-                onChange={(event) => updateField('name', event.target.value)}
-                placeholder="Full Name"
-                value={form.name}
-              />
-            </label>
-            <label>
-              <Shield size={17} />
-              <input
-                onChange={(event) => updateField('employeeId', event.target.value)}
-                placeholder="Employee ID"
-                value={form.employeeId}
-              />
-            </label>
-          </>
+          <label>
+            <User size={17} />
+            <input
+              autoComplete="name"
+              onChange={(event) => updateField('name', event.target.value)}
+              placeholder="Full name"
+              value={form.name}
+            />
+          </label>
         ) : null}
 
         <label>
-          {isSignup ? <Mail size={17} /> : <Shield size={17} />}
+          <Shield size={17} />
           <input
-            onChange={(event) => updateField('email', event.target.value)}
-            placeholder={isSignup ? 'Email' : 'Employee ID, name, or email'}
-            type={isSignup ? 'email' : 'text'}
-            value={form.email}
+            autoComplete="username"
+            onChange={(event) => updateField('employeeId', event.target.value)}
+            placeholder="Employee ID"
+            type="text"
+            value={form.employeeId}
           />
         </label>
         <label>
           <LockKeyhole size={17} />
           <input
+            autoComplete={isSignup ? 'new-password' : 'current-password'}
             minLength={6}
             onChange={(event) => updateField('password', event.target.value)}
             placeholder="Password"
@@ -2365,14 +2354,8 @@ function AuthScreen({ error, loading, mode, onGuest, onSubmit, setMode }) {
       </form>
 
       <div className="auth-divider"><span>or</span></div>
-      <button className="google-auth-button" onClick={() => setGoogleNotice('Google sign-in needs OAuth setup. Use employee ID and password for now.')} type="button">
-        <span>G</span>
-        Continue with Google
-      </button>
-      {googleNotice ? <p className="form-note">{googleNotice}</p> : null}
-
       <div className="guest-entry">
-        <span>or continue without an account</span>
+        <span>Continue without an account</span>
         {guestNameOpen ? (
           <label className="guest-name-field">
             <User size={17} />
@@ -3253,6 +3236,7 @@ export default function App() {
     localStorage.setItem(ONBOARDING_KEY, 'true');
     localStorage.setItem(TERMS_KEY, 'true');
     setShowOnboarding(false);
+    setActiveView('home');
   }
 
   function toggleTheme() {

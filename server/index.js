@@ -135,25 +135,25 @@ app.get('/api/health', (request, response) => {
 
 app.post('/api/auth/signup', async (request, response) => {
   const name = String(request.body.name ?? '').trim();
-  const email = String(request.body.email ?? '').trim().toLowerCase();
   const password = String(request.body.password ?? '');
-  const employeeId = String(request.body.employeeId ?? '').trim() || `EMP-${Date.now().toString().slice(-5)}`;
+  const employeeId = String(request.body.employeeId ?? '').trim();
+  const normalizedEmployeeId = employeeId.toLowerCase();
 
-  if (!name || !email || password.length < 6) {
-    return response.status(400).json({ message: 'Name, email, and a 6 character password are required' });
+  if (!name || !employeeId || password.length < 6) {
+    return response.status(400).json({ message: 'Name, employee ID, and a 6 character password are required' });
   }
 
   const store = await readStore();
-  const exists = store.users.some((user) => user.email === email || user.employeeId === employeeId);
+  const exists = store.users.some((user) => String(user.employeeId ?? '').toLowerCase() === normalizedEmployeeId);
 
   if (exists) {
-    return response.status(409).json({ message: 'Account already exists for this email or employee ID' });
+    return response.status(409).json({ message: 'Account already exists for this employee ID' });
   }
 
   const user = {
     id: randomUUID(),
     name,
-    email,
+    email: '',
     employeeId,
     workplace: WORKPLACE,
     location: null,
@@ -174,17 +174,16 @@ app.post('/api/auth/signup', async (request, response) => {
 });
 
 app.post('/api/auth/login', async (request, response) => {
-  const identifier = String(request.body.email ?? request.body.identifier ?? '').trim().toLowerCase();
+  const identifier = String(request.body.employeeId ?? request.body.email ?? request.body.identifier ?? '').trim().toLowerCase();
   const password = String(request.body.password ?? '');
   const store = await readStore();
   const user = store.users.find((item) => (
-    item.email === identifier
-    || String(item.employeeId ?? '').toLowerCase() === identifier
-    || String(item.name ?? '').toLowerCase() === identifier
+    String(item.employeeId ?? '').toLowerCase() === identifier
+    || String(item.email ?? '').toLowerCase() === identifier
   ));
 
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
-    return response.status(401).json({ message: 'Invalid employee ID, name, email, or password' });
+    return response.status(401).json({ message: 'Invalid employee ID or password' });
   }
 
   response.json({
