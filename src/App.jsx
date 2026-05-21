@@ -2240,7 +2240,7 @@ function NotesScreen({ dateKey, record, saveNotes }) {
   );
 }
 
-function AuthScreen({ error, loading, mode, onGuest, onSubmit, setMode }) {
+function AuthScreen({ error, loading, mode, onGuest, onHowItWorks, onSubmit, setMode }) {
   const [form, setForm] = useState({
     name: '',
     employeeId: '',
@@ -2284,93 +2284,100 @@ function AuthScreen({ error, loading, mode, onGuest, onSubmit, setMode }) {
           <h1>{isSignup ? 'Create Account' : 'Welcome back'}</h1>
           <p>{isSignup ? 'Sign up with your employee ID and password' : 'Login with your employee ID and password'}</p>
         </div>
-      </div>
-
-      <div className="auth-illustration" aria-hidden="true">
-        <div className="auth-orbit">
-          <Clock3 size={34} />
-        </div>
-        <div className="auth-mini-card">
-          <span>Today</span>
-          <strong>08:00</strong>
-          <small>Target hours</small>
-        </div>
-      </div>
-
-      <div className="auth-toggle">
-        <button className={!isSignup ? 'active' : ''} onClick={() => setMode('login')} type="button">
-          Login
-        </button>
-        <button className={isSignup ? 'active' : ''} onClick={() => setMode('signup')} type="button">
-          Sign Up
+        <img className="auth-brand-art" src="/illustrations/onboarding-attendance.svg" alt="" />
+        <button className="auth-how-link" onClick={onHowItWorks} type="button">
+          How it works
+          <ChevronRight size={17} />
         </button>
       </div>
 
-      <form className="auth-form" onSubmit={submit}>
-        {isSignup ? (
+      <section className="auth-panel" aria-label={isSignup ? 'Create WorkPulse account' : 'Log in to WorkPulse'}>
+        <div className="auth-illustration" aria-hidden="true">
+          <div className="auth-orbit">
+            <Clock3 size={34} />
+          </div>
+          <div className="auth-mini-card">
+            <span>Today</span>
+            <strong>08:00</strong>
+            <small>Target hours</small>
+          </div>
+        </div>
+
+        <div className="auth-toggle">
+          <button className={!isSignup ? 'active' : ''} onClick={() => setMode('login')} type="button">
+            Login
+          </button>
+          <button className={isSignup ? 'active' : ''} onClick={() => setMode('signup')} type="button">
+            Sign Up
+          </button>
+        </div>
+
+        <form className="auth-form" onSubmit={submit}>
+          {isSignup ? (
+            <label>
+              <User size={17} />
+              <input
+                autoComplete="name"
+                onChange={(event) => updateField('name', event.target.value)}
+                placeholder="Full name"
+                value={form.name}
+              />
+            </label>
+          ) : null}
+
           <label>
-            <User size={17} />
+            <Shield size={17} />
             <input
-              autoComplete="name"
-              onChange={(event) => updateField('name', event.target.value)}
-              placeholder="Full name"
-              value={form.name}
+              autoComplete="username"
+              onChange={(event) => updateField('employeeId', event.target.value)}
+              placeholder="Employee ID"
+              type="text"
+              value={form.employeeId}
             />
           </label>
-        ) : null}
-
-        <label>
-          <Shield size={17} />
-          <input
-            autoComplete="username"
-            onChange={(event) => updateField('employeeId', event.target.value)}
-            placeholder="Employee ID"
-            type="text"
-            value={form.employeeId}
-          />
-        </label>
-        <label>
-          <LockKeyhole size={17} />
-          <input
-            autoComplete={isSignup ? 'new-password' : 'current-password'}
-            minLength={6}
-            onChange={(event) => updateField('password', event.target.value)}
-            placeholder="Password"
-            type="password"
-            value={form.password}
-          />
-        </label>
-
-        {error ? <p className="form-error">{error}</p> : null}
-
-        <button className="primary-action auth-submit" disabled={loading} type="submit">
-          {loading ? 'Please wait...' : isSignup ? 'Sign Up' : 'Login'}
-        </button>
-      </form>
-
-      <div className="auth-divider"><span>or</span></div>
-      <div className="guest-entry">
-        <span>Continue without an account</span>
-        {guestNameOpen ? (
-          <label className="guest-name-field">
-            <User size={17} />
+          <label>
+            <LockKeyhole size={17} />
             <input
-              autoComplete="name"
-              autoFocus
-              onChange={(event) => {
-                setGuestName(event.target.value);
-                setGuestNameError('');
-              }}
-              placeholder="Your name"
-              value={guestName}
+              autoComplete={isSignup ? 'new-password' : 'current-password'}
+              minLength={6}
+              onChange={(event) => updateField('password', event.target.value)}
+              placeholder="Password"
+              type="password"
+              value={form.password}
             />
           </label>
-        ) : null}
-        {guestNameError ? <p className="form-error">{guestNameError}</p> : null}
-        <button onClick={startGuest} type="button">
-          {guestNameOpen ? 'Start Guest Mode' : 'Continue as Guest'}
-        </button>
-      </div>
+
+          {error ? <p className="form-error">{error}</p> : null}
+
+          <button className="primary-action auth-submit" disabled={loading} type="submit">
+            {loading ? 'Please wait...' : isSignup ? 'Sign Up' : 'Login'}
+          </button>
+        </form>
+
+        <div className="auth-divider"><span>or</span></div>
+        <div className="guest-entry">
+          <span>Continue without an account</span>
+          {guestNameOpen ? (
+            <label className="guest-name-field">
+              <User size={17} />
+              <input
+                autoComplete="name"
+                autoFocus
+                onChange={(event) => {
+                  setGuestName(event.target.value);
+                  setGuestNameError('');
+                }}
+                placeholder="Your name"
+                value={guestName}
+              />
+            </label>
+          ) : null}
+          {guestNameError ? <p className="form-error">{guestNameError}</p> : null}
+          <button onClick={startGuest} type="button">
+            {guestNameOpen ? 'Start Guest Mode' : 'Continue as Guest'}
+          </button>
+        </div>
+      </section>
     </main>
   );
 }
@@ -2404,16 +2411,35 @@ function OnboardingScreen({ onDone }) {
   const slides = [
     {
       image: '/illustrations/onboarding-attendance.svg',
-      eyebrow: 'Attendance made simple',
-      title: 'Welcome to',
-      accent: 'Attendance Management',
-      body: 'Track attendance, manage your day, and keep your work hours organized effortlessly.',
+      eyebrow: 'Welcome to WorkPulse',
+      title: 'Track your',
+      accent: 'workday with clarity',
+      body: 'Punch in, review your hours, and keep one clean timeline for every workday.',
+      chips: ['Live timer', 'Weekly reports', 'Guest mode'],
     },
     {
       icon: Timer,
-      eyebrow: 'WorkPulse',
-      title: 'Track every work session',
-      body: 'Punch in, punch out, mark breaks, and watch your daily total update in real time.',
+      eyebrow: 'Live work timer',
+      title: 'Punch in and watch',
+      accent: 'hours add up',
+      body: 'Your daily totals update as you work so the dashboard stays easy to trust.',
+      chips: ['Punch in', 'Punch out', 'Manual time'],
+    },
+    {
+      icon: Coffee,
+      eyebrow: 'Break tracking',
+      title: 'Mark breaks',
+      accent: 'without guessing',
+      body: 'Keep work time and break time separate with one simple break control.',
+      chips: ['Mark break', 'End break', 'Clear totals'],
+    },
+    {
+      icon: MapPin,
+      eyebrow: 'Work location',
+      title: 'Save the place',
+      accent: 'you work from',
+      body: 'Use a saved workplace and live location prompts when you want punch reminders.',
+      chips: ['Saved workplace', 'Live location', 'Arrival prompts'],
     },
     {
       image: '/illustrations/terms-checklist.svg',
@@ -2445,6 +2471,10 @@ function OnboardingScreen({ onDone }) {
     setStep((current) => Math.max(0, current - 1));
   }
 
+  function chooseStep(index) {
+    setStep(index);
+  }
+
   return (
     <main className={slide.terms ? 'onboarding-screen terms-step' : 'onboarding-screen'}>
       <div className="onboarding-top">
@@ -2458,8 +2488,11 @@ function OnboardingScreen({ onDone }) {
           </>
         ) : (
           <>
-            <WorkPulseLogo compact />
-            <button className="onboarding-skip" onClick={skipToTerms} type="button">Skip</button>
+            <div className="onboarding-brand">
+              <WorkPulseLogo compact />
+              <span>Step {step + 1} of {slides.length - 1}</span>
+            </div>
+            <button className="onboarding-skip" onClick={skipToTerms} type="button">Skip intro</button>
           </>
         )}
       </div>
@@ -2472,6 +2505,11 @@ function OnboardingScreen({ onDone }) {
             {slide.accent ? <span>{slide.accent}</span> : null}
           </h1>
           <p>{slide.body}</p>
+          {slide.chips ? (
+            <div className="onboarding-chips" aria-label="Highlights">
+              {slide.chips.map((chip) => <span key={chip}>{chip}</span>)}
+            </div>
+          ) : null}
         </section>
       ) : null}
 
@@ -2486,9 +2524,17 @@ function OnboardingScreen({ onDone }) {
       </section>
 
       {!slide.terms ? (
-        <div className="onboarding-dots" aria-label={`Step ${step + 1} of ${slides.length}`}>
+        <div className="onboarding-dots" aria-label={`Step ${step + 1} of ${slides.length - 1}`}>
           {slides.map((item, index) => (
-            <span className={index === step ? 'active' : ''} key={item.title} />
+            !item.terms ? (
+              <button
+                aria-label={`Show onboarding step ${index + 1}`}
+                className={index === step ? 'active' : ''}
+                key={item.title}
+                onClick={() => chooseStep(index)}
+                type="button"
+              />
+            ) : null
           ))}
         </div>
       ) : null}
@@ -2528,10 +2574,18 @@ function OnboardingScreen({ onDone }) {
         </section>
       ) : null}
 
-      <button className="primary-action onboarding-action" disabled={isLast && !acceptedTerms} onClick={next} type="button">
-        <span>{isLast ? 'Agree and Continue' : 'Next'}</span>
-        {!isLast ? <ChevronRight size={20} /> : null}
-      </button>
+      <div className="onboarding-footer">
+        {!slide.terms && step > 0 ? (
+          <button className="onboarding-previous" onClick={goBack} type="button">
+            <ArrowLeft size={18} />
+            Back
+          </button>
+        ) : null}
+        <button className="primary-action onboarding-action" disabled={isLast && !acceptedTerms} onClick={next} type="button">
+          <span>{isLast ? 'Agree and Continue' : step === slides.length - 2 ? 'Review terms' : 'Continue'}</span>
+          {!isLast ? <ChevronRight size={20} /> : null}
+        </button>
+      </div>
     </main>
   );
 }
@@ -3225,12 +3279,19 @@ export default function App() {
     setUser(null);
     setRecords({});
     setActiveView('home');
+    setAuthMode('login');
+    setShowOnboarding(false);
   }
 
   function finishOnboarding() {
     localStorage.setItem(ONBOARDING_KEY, 'true');
     localStorage.setItem(TERMS_KEY, 'true');
     setShowOnboarding(false);
+    setActiveView('home');
+  }
+
+  function openOnboardingGuide() {
+    setShowOnboarding(true);
     setActiveView('home');
   }
 
@@ -3291,6 +3352,7 @@ export default function App() {
             loading={loadingAuth}
             mode={authMode}
             onGuest={startGuestMode}
+            onHowItWorks={openOnboardingGuide}
             onSubmit={handleAuth}
             setMode={setAuthMode}
           />
