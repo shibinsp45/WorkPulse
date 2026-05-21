@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-labelledby="title">
+  <title id="title">WorkPulse mark</title>
+  <defs>
+    <linearGradient id="pulseBlue" x1="24" x2="136" y1="24" y2="136" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1496ff"/>
+      <stop offset="1" stop-color="#0757f3"/>
+    </linearGradient>
+  </defs>
+  <g fill="none" stroke="url(#pulseBlue)" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M33 70a48 48 0 0 1 94 0" stroke-width="10"/>
+    <path d="M33 90a48 48 0 0 0 94 0" stroke-width="10"/>
+    <path d="M26 80h41l13-34 18 68 17-43 9 19h10" stroke-width="11"/>
+  </g>
+</svg>

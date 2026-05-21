@@ -1,8 +1,9 @@
-const CACHE_NAME = 'workpulse-cache-v2';
+const CACHE_NAME = 'workpulse-cache-v3';
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.webmanifest',
+  './icons/workpulse-mark.svg',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/apple-touch-icon.png',

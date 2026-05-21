@@ -610,8 +610,8 @@ async function showWorkPulseNotification(title, options = {}) {
   }
 
   const notificationOptions = {
-    badge: './icons/icon-192.png',
-    icon: './icons/icon-192.png',
+    badge: './icons/workpulse-mark.svg',
+    icon: './icons/workpulse-mark.svg',
     ...options,
   };
 
@@ -678,11 +678,8 @@ function getDailyEvents(sessions) {
 
 function WorkPulseLogo({ compact = false }) {
   return (
-    <div className={compact ? 'workpulse-logo compact' : 'workpulse-logo'}>
-      <div className="logo-ring">
-        <Clock3 size={compact ? 22 : 36} />
-        <CheckCircle2 className="logo-check" size={compact ? 15 : 22} />
-      </div>
+    <div className={compact ? 'workpulse-logo compact' : 'workpulse-logo'} aria-label="WorkPulse">
+      <img className="workpulse-logo-mark" src="./icons/workpulse-mark.svg" alt="" />
     </div>
   );
 }
@@ -2282,9 +2279,7 @@ function AuthScreen({ error, loading, mode, onGuest, onSubmit, setMode }) {
   return (
     <main className="auth-screen">
       <div className="auth-brand">
-        <div className="mini-logo">
-          <CheckCircle2 size={24} />
-        </div>
+        <WorkPulseLogo compact />
         <div>
           <h1>{isSignup ? 'Create Account' : 'Welcome back'}</h1>
           <p>{isSignup ? 'Sign up with your employee ID and password' : 'Login with your employee ID and password'}</p>
