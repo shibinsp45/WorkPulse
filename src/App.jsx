@@ -2401,11 +2401,6 @@ function AuthScreen({ error, loading, mode, onGuest, onHowItWorks, onSubmit, set
           <div className="auth-orbit">
             <Clock3 size={34} />
           </div>
-          <div className="auth-mini-card">
-            <span>Today</span>
-            <strong>08:00</strong>
-            <small>Target hours</small>
-          </div>
         </div>
 
         <div className="auth-toggle">
@@ -2599,7 +2594,6 @@ function OnboardingScreen({ onDone }) {
           <>
             <div className="onboarding-brand">
               <WorkPulseLogo compact />
-              <span>Step {step + 1} of {slides.length - 1}</span>
             </div>
             <button className="onboarding-skip" onClick={skipToTerms} type="button">Skip intro</button>
           </>
