@@ -684,6 +684,103 @@ function WorkPulseLogo({ compact = false }) {
   );
 }
 
+function AuthAttendanceScene({ className = '' }) {
+  return (
+    <svg className={className} viewBox="0 0 760 520" role="img" aria-labelledby="auth-scene-title auth-scene-desc">
+      <title id="auth-scene-title">WorkPulse attendance dashboard illustration</title>
+      <desc id="auth-scene-desc">A person working at a desk beside an attendance overview dashboard.</desc>
+      <defs>
+        <linearGradient id="authSceneBlue" x1="0" x2="1" y1="0" y2="1">
+          <stop offset="0" stopColor="#2f7bff" />
+          <stop offset="1" stopColor="#0d47c9" />
+        </linearGradient>
+        <linearGradient id="authSceneCyan" x1="0" x2="1" y1="0" y2="1">
+          <stop offset="0" stopColor="#66e1d1" />
+          <stop offset="1" stopColor="#238fd3" />
+        </linearGradient>
+        <linearGradient id="authScenePanel" x1="0" x2="1" y1="0" y2="1">
+          <stop offset="0" stopColor="#ffffff" />
+          <stop offset="1" stopColor="#e9f1ff" />
+        </linearGradient>
+        <filter id="authSceneGlow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="22" stdDeviation="22" floodColor="#0b2b75" floodOpacity=".45" />
+        </filter>
+        <filter id="authSceneSoftShadow" x="-30%" y="-30%" width="160%" height="160%">
+          <feDropShadow dx="0" dy="18" stdDeviation="16" floodColor="#061225" floodOpacity=".38" />
+        </filter>
+      </defs>
+
+      <path d="M58 382c-18-104 38-183 134-200 82-15 124 32 197-3 111-54 211 2 244 88 40 102-40 209-161 227-148 21-389 19-414-112Z" fill="#102454" opacity=".76" />
+      <path d="M22 332c32-60 87-93 148-78 55 14 82 63 142 42 72-25 128-8 168 43 44 57 24 128-48 150H22V332Z" fill="#122c62" opacity=".42" />
+
+      <g opacity=".28" fill="#2e4988">
+        <path d="M32 336h58v136H32z" />
+        <path d="M52 313h72v159H52z" />
+        <path d="M95 358h64v114H95z" />
+        <path d="M108 323h35v149h-35z" />
+        <path d="M38 351h9v10h-9zM58 351h9v10h-9zM78 351h9v10h-9zM61 381h9v10h-9zM100 378h9v10h-9zM124 362h9v10h-9z" />
+      </g>
+
+      <g filter="url(#authSceneGlow)">
+        <rect x="322" y="116" width="310" height="232" rx="14" fill="#163064" />
+        <rect x="334" y="128" width="286" height="208" rx="10" fill="url(#authScenePanel)" />
+        <text x="356" y="176" fill="#0d1c3d" fontFamily="Inter, Arial, sans-serif" fontSize="17" fontWeight="900">Attendance Overview</text>
+        <rect x="352" y="204" width="118" height="118" rx="18" fill="#f7fbff" />
+        <circle cx="411" cy="263" r="42" fill="none" stroke="#d7e4f7" strokeWidth="15" />
+        <path d="M411 221a42 42 0 1 1-37 62" fill="none" stroke="url(#authSceneCyan)" strokeWidth="15" strokeLinecap="round" />
+        <text x="411" y="259" textAnchor="middle" fill="#0a2d55" fontFamily="Inter, Arial, sans-serif" fontSize="28" fontWeight="900">92%</text>
+        <text x="411" y="284" textAnchor="middle" fill="#08866d" fontFamily="Inter, Arial, sans-serif" fontSize="13" fontWeight="900">Present</text>
+        <g>
+          <rect x="504" y="196" width="86" height="120" rx="14" fill="#f2f6ff" />
+          {[0, 1, 2].map((row) => (
+            <g key={row} transform={`translate(0 ${row * 38})`}>
+              <circle cx="526" cy="220" r="13" fill="#cfe0ff" />
+              <circle cx="526" cy="216" r="6" fill="#2c73ec" />
+              <path d="M515 231c4-8 18-8 22 0" fill="#2c73ec" />
+              <rect x="548" y="211" width="34" height="6" rx="3" fill="#b8c9ee" />
+              <rect x="548" y="224" width="54" height="6" rx="3" fill="#c8d6f2" />
+            </g>
+          ))}
+        </g>
+      </g>
+
+      <g transform="translate(247 248)" filter="url(#authSceneSoftShadow)">
+        <path d="M57 160c-4 32-18 58-42 78h92c-17-22-26-49-26-78H57Z" fill="#0b1c3d" />
+        <path d="M26 92c-10 29-12 55-7 79h80c4-26-1-56-14-89-18-28-48-27-59 10Z" fill="url(#authSceneBlue)" />
+        <path d="M35 93c-18 30-41 52-69 66l18 24c31-12 58-35 81-69L35 93Z" fill="#0e55dc" />
+        <path d="M76 101c29 21 52 44 72 70l-21 20c-23-24-47-43-74-57l23-33Z" fill="#135fe8" />
+        <path d="M-22 178c-17-1-31-10-38-27l17-12c10 16 21 21 36 19l-15 20Z" fill="#ffbd8c" />
+        <path d="M126 189c-15 5-30 0-40-14l15-16c12 11 22 13 34 6l-9 24Z" fill="#ffbd8c" />
+        <circle cx="64" cy="28" r="31" fill="#ffbd8c" />
+        <path d="M31 24c2-29 43-39 66-14 9 11 2 31-9 39-8-18-24-24-41-14-10 7-16 2-16-11Z" fill="#071832" />
+        <path d="M55 60h26l-3 27H53l2-27Z" fill="#ffbd8c" />
+      </g>
+
+      <g filter="url(#authSceneSoftShadow)">
+        <path d="M188 438h369" stroke="#0a1a38" strokeWidth="15" strokeLinecap="round" />
+        <rect x="366" y="356" width="160" height="82" rx="10" fill="#0b1c3d" />
+        <path d="M394 372h108l18 66H378l16-66Z" fill="#203c75" />
+        <circle cx="448" cy="410" r="14" fill="#0f5cff" opacity=".7" />
+        <path d="M439 410c8-10 16-10 20 0-6 10-13 10-20 0Z" fill="#75b4ff" />
+        <rect x="371" y="438" width="169" height="8" rx="4" fill="#061225" />
+        <rect x="503" y="388" width="33" height="42" rx="8" fill="#0a56df" />
+        <rect x="508" y="383" width="21" height="10" rx="5" fill="#54a5ff" />
+      </g>
+
+      <g transform="translate(32 316)">
+        <path d="M58 142c-14-54-4-96 30-126 28 40 25 86-8 134l-22-8Z" fill="#2453d8" opacity=".82" />
+        <path d="M90 150c-7-66 18-110 77-132 6 60-22 103-77 132Z" fill="#3159ff" opacity=".74" />
+        <rect x="57" y="142" width="72" height="48" rx="10" fill="#d7e2f5" opacity=".75" />
+      </g>
+      <g transform="translate(614 340)">
+        <path d="M28 88c-10-38-3-68 21-90 20 29 18 62-6 96l-15-6Z" fill="#2453d8" opacity=".72" />
+        <path d="M51 94c-5-47 13-78 55-94 4 43-16 74-55 94Z" fill="#3159ff" opacity=".62" />
+        <rect x="25" y="88" width="54" height="44" rx="9" fill="#132856" />
+      </g>
+    </svg>
+  );
+}
+
 function AppHeader({ activeView, now, onBack, setActiveView, user }) {
   const isBackView = DETAIL_VIEWS.has(activeView);
   const isHomeView = activeView === 'home';
@@ -2284,7 +2381,15 @@ function AuthScreen({ error, loading, mode, onGuest, onHowItWorks, onSubmit, set
           <h1>{isSignup ? 'Create Account' : 'Welcome back'}</h1>
           <p>{isSignup ? 'Sign up with your employee ID and password' : 'Login with your employee ID and password'}</p>
         </div>
-        <img className="auth-brand-art" src="/illustrations/onboarding-attendance.svg" alt="" />
+        <AuthAttendanceScene className="auth-brand-art" />
+        <div className="auth-scene-calendar" aria-hidden="true">
+          <CalendarDays size={35} />
+        </div>
+        <div className="auth-scene-shift" aria-hidden="true">
+          <Clock3 size={26} />
+          <span>On Time</span>
+          <small>Today 08:00 AM</small>
+        </div>
         <button className="auth-how-link" onClick={onHowItWorks} type="button">
           How it works
           <ChevronRight size={17} />
@@ -2317,6 +2422,7 @@ function AuthScreen({ error, loading, mode, onGuest, onHowItWorks, onSubmit, set
             <label>
               <User size={17} />
               <input
+                aria-label="Full name"
                 autoComplete="name"
                 onChange={(event) => updateField('name', event.target.value)}
                 placeholder="Full name"
@@ -2328,6 +2434,7 @@ function AuthScreen({ error, loading, mode, onGuest, onHowItWorks, onSubmit, set
           <label>
             <Shield size={17} />
             <input
+              aria-label="Employee ID"
               autoComplete="username"
               onChange={(event) => updateField('employeeId', event.target.value)}
               placeholder="Employee ID"
@@ -2338,6 +2445,7 @@ function AuthScreen({ error, loading, mode, onGuest, onHowItWorks, onSubmit, set
           <label>
             <LockKeyhole size={17} />
             <input
+              aria-label="Password"
               autoComplete={isSignup ? 'new-password' : 'current-password'}
               minLength={6}
               onChange={(event) => updateField('password', event.target.value)}
@@ -2361,6 +2469,7 @@ function AuthScreen({ error, loading, mode, onGuest, onHowItWorks, onSubmit, set
             <label className="guest-name-field">
               <User size={17} />
               <input
+                aria-label="Guest name"
                 autoComplete="name"
                 autoFocus
                 onChange={(event) => {
@@ -3346,7 +3455,7 @@ export default function App() {
   if (!user) {
     return (
       <main className="page">
-        <section className="phone-shell intro-shell">
+        <section className="phone-shell intro-shell auth-shell">
           <AuthScreen
             error={authError}
             loading={loadingAuth}
